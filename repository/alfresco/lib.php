@@ -154,6 +154,16 @@ class repository_alfresco extends repository {
             } else {
                 $this->current_node = $this->user_session->getNode($this->store, $uuid);
             }
+            $pathnodes = array();
+            $level = $this->current_node;
+            while ($level != $this->store->companyHome) {
+              $pathnodes[] = array('name'=>$level->cm_name, 'path'=>$level->id);
+              $level = $level->primaryParent;
+            }
+            if (!empty($pathnodes) && is_array($pathnodes)) {
+              $pathnodes = array_reverse($pathnodes);
+              $ret['path'] = array_merge($ret['path'],$pathnodes);
+            }           
 
             $folder_filter = "{http://www.alfresco.org/model/content/1.0}folder";
             $file_filter = "{http://www.alfresco.org/model/content/1.0}content";
