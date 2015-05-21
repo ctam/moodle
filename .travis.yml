@@ -1,0 +1,41 @@
+# see http://about.travis-ci.org/docs/user/languages/php/ for more hints
+language: php
+
+# list any PHP version you want to test against
+php:
+  # using major version aliases
+
+  # aliased to a recent 5.5.x version
+  - 5.5
+  # aliased to a recent 5.6.x version
+  - 5.6
+
+# optionally specify a list of environments, for example to test different RDBMS
+env:
+  - DB=mysql
+  - DB=pgsql
+
+# execute any number of scripts before the test run, custom env's are available as variables
+before_script:
+  - if [[ "$DB" == "pgsql" ]]; then psql -c "DROP DATABASE IF EXISTS moodle;" -U postgres; fi
+  - if [[ "$DB" == "pgsql" ]]; then psql -c "create database moodle;" -U postgres; fi
+  - if [[ "$DB" == "mysql" ]]; then mysql -e "create database IF NOT EXISTS moodle;" -uroot; fi
+  - if [[ "$DB" == "mysql" ]]; then mysql -e "SET GLOBAL innodb_file_format = Barracuda; SET GLOBAL innodb_file_format_max = Barracuda; SET GLOBAL innodb_file_per_table=1; ALTER DATABASE moodle COLLATE utf8_bin;" -uroot; fi
+  - cp config-dist.php config.php
+  - mkdir $(dirname $(pwd))/moodledata
+  - if [[ "$DB" == "mysql" ]]; then sed -i "s/pgsql';/mysqli';/g" config.php
+  - sed -i "s/username';/root';/g" config.php
+  - sed -i "s/'password';/'';/g" config.php
+  - sed -i "s/'\/home\/example\//$(dirname $(pwd))\//g" config.php
+  - sed -i "s/example.com/localhost/g" config.php
+  - mkdir $(dirname $(pwd))/phpu_moodledata
+  - sed -i "s/\/\/ \$CFG->phpunit_/\$CFG->phpunit_/g" config.php
+  - php admin/tool/phpunit/cli/init.php
+  
+# omitting "script:" will default to phpunit
+# use the $DB env variable to determine the phpunit.xml to use
+# script: phpunit --configuration phpunit_$DB.xml --coverage-text
+
+# configure notifications (email, IRC, campfire etc)
+# notifications:
+#   irc: "irc.freenode.org#yourfavouriteroomfortravis"
