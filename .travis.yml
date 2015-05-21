@@ -26,10 +26,10 @@ before_script:
   - if [[ "$DB" == "mysql" ]]; then sed -i "s/pgsql';/mysqli';/g" config.php; fi
   - sed -i "s/username';/root';/g" config.php
   - sed -i "s/'password';/'';/g" config.php
-  - sed -i "s/'\/home\/example\//$(dirname $(pwd))\//g" config.php
+  - sed -i "s:'/home/example/:'$(dirname $(pwd))/:g" config.php
   - sed -i "s/example.com/localhost/g" config.php
   - mkdir $(dirname $(pwd))/phpu_moodledata
-  - sed -i "s/\/\/ \$CFG->phpunit_/\$CFG->phpunit_/g" config.php
+  - sed -i "s:// \$CFG->phpunit_:\$CFG->phpunit_:g" config.php
   - php admin/tool/phpunit/cli/init.php
   
 # omitting "script:" will default to phpunit
