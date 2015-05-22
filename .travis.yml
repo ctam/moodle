@@ -30,11 +30,14 @@ before_script:
   - sed -i "s/example.com/localhost/g" config.php
   - mkdir $(dirname $(pwd))/phpu_moodledata
   - sed -i "s:// \$CFG->phpunit_:\$CFG->phpunit_:g" config.php
+  - curl -s https://getcomposer.org/installer |php
+  - php composer.phar install --prefer-source
   - php admin/tool/phpunit/cli/init.php
   
 # omitting "script:" will default to phpunit
 # use the $DB env variable to determine the phpunit.xml to use
 # script: phpunit --configuration phpunit_$DB.xml --coverage-text
+script: vendor/bin/phpunit
 
 # configure notifications (email, IRC, campfire etc)
 # notifications:
