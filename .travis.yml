@@ -23,8 +23,9 @@ before_script:
   - if [[ "$DB" == "mysql" ]]; then mysql -e "SET GLOBAL innodb_file_format = Barracuda; SET GLOBAL innodb_file_format_max = Barracuda; SET GLOBAL innodb_file_per_table=1; ALTER DATABASE moodle COLLATE utf8_bin;" -uroot; fi
   - cp config-dist.php config.php
   - mkdir $(dirname $(pwd))/moodledata
+  - if [[ "$DB" == "pgsql" ]]; then sed -i "s/username';/postgres';/g" config.php; fi
   - if [[ "$DB" == "mysql" ]]; then sed -i "s/pgsql';/mysqli';/g" config.php; fi
-  - sed -i "s/username';/root';/g" config.php
+  - if [[ "$DB" == "mysql" ]]; then sed -i "s/username';/root';/g" config.php; fi
   - sed -i "s/'password';/'';/g" config.php
   - sed -i "s:'/home/example/:'$(dirname $(pwd))/:g" config.php
   - sed -i "s/example.com/localhost/g" config.php
