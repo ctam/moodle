@@ -1553,7 +1553,11 @@ class grade_category extends grade_object {
 
         // update db if anything changed
         if ($this->grade_item->grademax != $max or $this->grade_item->grademin != 0 or $this->grade_item->gradetype != GRADE_TYPE_VALUE) {
-            $this->grade_item->grademax  = $max;
+            // Since there's a max limit, 99999.99999, on grademax in the database table mdl_grade_items, we are going to set it to
+            // 99999 when it is greater than 99999.  If we set it to 99999.99999, it will become 100000 when displayed, so we don't
+            // want to use decimal.  I think in general when user see 99999, they will think there's something not right or they had hit
+            // a max.
+            $this->grade_item->grademax  = min($max, 99999);
             $this->grade_item->grademin  = 0;
             $this->grade_item->gradetype = GRADE_TYPE_VALUE;
             $this->grade_item->update('aggregation');
