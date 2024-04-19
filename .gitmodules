@@ -33,3 +33,7 @@
 	url = https://github.com/ncstate-delta/moodle-mod_zoom
 	branch = main
 	tag = v5.2.0
+[submodule "lib/editor/tinymce/plugins/h5p"]
+	path = lib/editor/tinymce/plugins/h5p
+	url = https://github.com/catalyst/tinymce_h5p
+	branch = main
