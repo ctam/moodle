@@ -33,3 +33,7 @@
 	url = https://github.com/ncstate-delta/moodle-mod_zoom
 	branch = main
 	tag = v5.2.0
+[submodule "mod/giportfolio"]
+	path = mod/giportfolio
+	url = https://github.com/synergylearning/moodle-mod_giportfolio
+	branch = master
