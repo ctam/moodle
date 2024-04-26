@@ -96,3 +96,8 @@
 	url = https://github.com/ucsf-education/moodle-theme-ucsf
 	branch = MOODLE_403_DEVEL
 	tag = v4.1
+[submodule "mod/turnitintooltwo"]
+	path = mod/turnitintooltwo
+	url = https://github.com/turnitin/moodle-mod_turnitintooltwo
+	branch = master
+	tag = v2024032901
