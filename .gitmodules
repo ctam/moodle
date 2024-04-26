@@ -96,3 +96,7 @@
 	url = https://github.com/ucsf-education/moodle-theme-ucsf
 	branch = MOODLE_403_DEVEL
 	tag = v4.1
+[submodule "admin/tool/ucsfsomapi"]
+	path = admin/tool/ucsfsomapi
+	url = https://github.com/ucsf-education/tool_ucsfsomapi
+	branch = MOODLE_403_DEVEL
