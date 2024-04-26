@@ -96,3 +96,8 @@
 	url = https://github.com/ucsf-education/moodle-theme-ucsf
 	branch = MOODLE_403_DEVEL
 	tag = v4.1
+[submodule "mod/customcert"]
+	path = mod/customcert
+	url = https://github.com/markn86/moodle-mod_customcert
+	branch = MOODLE_402_STABLE
+	tag = v4.2.4
