@@ -96,3 +96,7 @@
 	url = https://github.com/ucsf-education/moodle-theme-ucsf
 	branch = MOODLE_403_DEVEL
 	tag = v4.1
+[submodule "admin/tool/ribbons"]
+	path = admin/tool/ribbons
+	url = https://github.com/cwarwicker/moodle-tool_ribbons
+	branch = main
