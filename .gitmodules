@@ -96,3 +96,8 @@
 	url = https://github.com/ucsf-education/moodle-theme-ucsf
 	branch = MOODLE_403_DEVEL
 	tag = v4.1
+[submodule "plagiarism/turnitin"]
+	path = plagiarism/turnitin
+	url = https://github.com/turnitin/moodle-plagiarism_turnitin
+	branch = master
+	tag = v2024020501
