@@ -100,4 +100,4 @@
 	path = mod/customcert
 	url = https://github.com/markn86/moodle-mod_customcert
 	branch = MOODLE_402_STABLE
-	tag = v4.2.4
+	tag = v4.2.5
