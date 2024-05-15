@@ -99,5 +99,5 @@
 [submodule "mod/questionnaire"]
 	path = mod/questionnaire
 	url = https://github.com/PoetOS/moodle-mod_questionnaire
-	branch = MOODLE_400_STABLE
+	branch = MOODLE_401_STABLE
 	tag = v4.0.1
