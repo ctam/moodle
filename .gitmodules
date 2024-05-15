@@ -100,4 +100,4 @@
 	path = mod/diary
 	url = https://github.com/drachels/moodle-mod_diary
 	branch = master
-	tag = v3.7.8
+	tag = v3.8.0
