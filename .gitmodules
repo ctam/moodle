@@ -10,6 +10,7 @@
 	path = blocks/checklist
 	url = https://github.com/davosmith/moodle-block_checklist
 	branch = master
+	tag = 3.4.3.0
 [submodule "blocks/massaction"]
 	path = blocks/massaction
 	url = https://github.com/Syxton/moodle-block_massaction
@@ -41,6 +42,11 @@
 	url = https://github.com/ndunand/moodle-atto_morefontcolors
 	branch = master
 	tag = 2021062100
+[submodule "lib/editor/tiny/plugins/fontcolor"]
+	path = lib/editor/tiny/plugins/fontcolor
+	url = https://github.com/bfh/moodle-tiny_fontcolor
+	branch = main
+	tag = V0.5
 [submodule "local/iliosapiclient"]
 	path = local/iliosapiclient
 	url = https://github.com/ilios/local_iliosapiclient
@@ -116,4 +122,3 @@
 	url = https://github.com/ucsf-education/moodle-theme-ucsf
 	branch = MOODLE_403_DEVEL
 	tag = v4.1
-	tag = 3.4.3.0
