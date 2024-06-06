@@ -153,3 +153,8 @@
 	url = https://github.com/andrewnicols/moodle-atto_fontsize
 	branch = main
 	tag = v2023091901
+[submodule "plagiarism/turnitin"]
+	path = plagiarism/turnitin
+	url = https://github.com/turnitin/moodle-plagiarism_turnitin
+	branch = master
+	tag = v2024020501
