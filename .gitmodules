@@ -153,3 +153,7 @@
 	url = https://github.com/andrewnicols/moodle-atto_fontsize
 	branch = main
 	tag = v2023091901
+[submodule "enrol/ucsfsis"]
+	path = enrol/ucsfsis
+	url = https://github.com/ucsf-education/moodle-enrol-ucsfsis
+	branch = MOODLE_401_STABLE
