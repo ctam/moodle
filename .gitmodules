@@ -156,4 +156,4 @@
 [submodule "enrol/ucsfsis"]
 	path = enrol/ucsfsis
 	url = https://github.com/ucsf-education/moodle-enrol-ucsfsis
-	branch = MOODLE_401_STABLE
+	branch = MOODLE_403_STABLE
