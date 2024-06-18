@@ -19,11 +19,19 @@
 	url = https://github.com/davosmith/moodle-block_checklist
 	branch = master
 	tag = 3.4.3.1
+[submodule "blocks/course_recent"]
+	path = blocks/course_recent
+	url = https://github.com/ucsf-education/moodle-block-course_recent
+	branch = MOODLE_403_DEVEL
 [submodule "blocks/massaction"]
 	path = blocks/massaction
 	url = https://github.com/Syxton/moodle-block_massaction
 	branch = MOODLE_403_STABLE
 	tag = 7.2.1
+[submodule "blocks/quickmail"]
+	path = blocks/quickmail
+	url = https://github.com/ucsf-education/moodle-block_quickmail
+	branch = UCSFCLE_37_STABLE
 [submodule "course/format/topcoll"]
 	path = course/format/topcoll
 	url = https://github.com/gjb2048/moodle-format_topcoll
@@ -193,7 +201,3 @@
 	url = https://github.com/andrewnicols/moodle-atto_fontsize
 	branch = main
 	tag = v2023091901
-[submodule "blocks/quickmail"]
-	path = blocks/quickmail
-	url = https://github.com/ucsf-education/moodle-block_quickmail
-	branch = UCSFCLE_37_STABLE
