@@ -53,7 +53,7 @@
 [submodule "filter/ucsfezproxy"]
 	path = filter/ucsfezproxy
 	url = https://github.com/ucsf-education/moodle-filter_ucsfezproxy
-	branch = MOODLE_403_DEVEL
+	branch = MOODLE_403_STABLE
 [submodule "lib/editor/atto/plugins/count"]
 	path = lib/editor/atto/plugins/count
 	url = https://github.com/damyon/moodle-atto_count
