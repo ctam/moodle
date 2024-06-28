@@ -157,3 +157,7 @@
 	url = https://github.com/andrewnicols/moodle-atto_fontsize
 	branch = main
 	tag = v2023091901
+[submodule "admin/tool/ldapsync"]
+	path = admin/tool/ldapsync
+	url = https://github.com/ucsf-education/moodle-admin-tool-ldapsync
+	branch = main
