@@ -179,3 +179,7 @@
 	path = enrol/ucsfsis
 	url = https://github.com/ucsf-education/moodle-enrol-ucsfsis
 	branch = MOODLE_403_STABLE
+[submodule "admin/tool/ldapsync"]
+	path = admin/tool/ldapsync
+	url = https://github.com/ucsf-education/moodle-admin-tool-ldapsync
+	branch = main
