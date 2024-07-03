@@ -179,3 +179,7 @@
 	path = enrol/ucsfsis
 	url = https://github.com/ucsf-education/moodle-enrol-ucsfsis
 	branch = MOODLE_403_STABLE
+[submodule "plagiarism/turnitin"]
+	path = plagiarism/turnitin
+	url = https://github.com/ucsf-education/moodle-plagiarism_turnitin
+	branch = UCSFCLE_403_STABLE
