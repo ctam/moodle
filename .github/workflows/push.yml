@@ -22,7 +22,7 @@ env:
 jobs:
   Grunt:
     runs-on: ubuntu-22.04
-    timeout-mintutes: 600
+    timeout-minutes: 600
 
     steps:
       - name: Checking out code
