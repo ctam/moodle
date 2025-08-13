@@ -167,3 +167,7 @@
 	url = https://github.com/ucsf-education/moodle-theme-ucsf
 	branch = MOODLE_405_STABLE
 	tag = v4.5.1
+[submodule "admin/tool/sentry"]
+	path = admin/tool/sentry
+	url = https://github.com/ctam/moodle-tool_sentry
+	branch = main
