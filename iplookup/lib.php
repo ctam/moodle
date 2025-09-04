@@ -67,6 +67,11 @@ function iplookup_find_location($ip) {
     } else {
         require_once($CFG->libdir.'/filelib.php');
 
+        if (PHPUNIT_TEST) {
+            // Do not call external services like, geoplugin.net, in unit tests
+            return $info;
+        }
+
         if (strpos($ip, ':') !== false) {
             // IPv6 is not supported by geoplugin.net.
             $info['error'] = get_string('invalidipformat', 'error');
