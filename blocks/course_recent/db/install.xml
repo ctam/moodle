@@ -4,11 +4,11 @@
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
   <TABLES>
-    <TABLE NAME="block_course_recent" COMMENT="">
+    <TABLE NAME="block_course_recent">
       <FIELDS>
-        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" ENUM="false" NEXT="userid"/>
-        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" ENUM="false" PREVIOUS="id" NEXT="userlimit"/>
-        <FIELD NAME="userlimit" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" ENUM="false" PREVIOUS="userid"/>
+        <FIELD LENGTH="10" NAME="id" NOTNULL="true" SEQUENCE="true" TYPE="int"/>
+        <FIELD DEFAULT="0" LENGTH="10" NAME="userid" NOTNULL="true" SEQUENCE="false" TYPE="int"/>
+        <FIELD DEFAULT="0" LENGTH="10" NAME="userlimit" NOTNULL="true" SEQUENCE="false" TYPE="int"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" />
