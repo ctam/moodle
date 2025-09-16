@@ -4,7 +4,7 @@
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
   <TABLES>
-    <TABLE NAME="block_course_recent">
+    <TABLE NAME="block_course_recent" COMMENT="Stores user-specific settings for the course_recent block">
       <FIELDS>
         <FIELD LENGTH="10" NAME="id" NOTNULL="true" SEQUENCE="true" TYPE="int"/>
         <FIELD DEFAULT="0" LENGTH="10" NAME="userid" NOTNULL="true" SEQUENCE="false" TYPE="int"/>
