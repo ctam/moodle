@@ -1,7 +1,7 @@
 /**
  * Javascript module for handling the migration of an assignment.
  *
- * @package   turnitintooltwo
+ * @package
  * @copyright Turnitin
  * @author 2019 David Winn <dwinn@turnitin.com>
  * @module mod_turnitintooltwo/migration_tool_migrate

@@ -1,7 +1,7 @@
 /**
  * Javascript controller for launching the migration tool modal.
  *
- * @package   turnitintooltwo
+ * @package
  * @copyright Turnitin
  * @author 2019 David Winn <dwinn@turnitin.com>
  * @module mod_turnitintooltwo/migration_tool_launch
