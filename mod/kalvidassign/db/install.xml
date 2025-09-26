@@ -38,7 +38,7 @@
         <FIELD NAME="width" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="Iframe width."/>
         <FIELD NAME="height" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="Iframe height."/>
         <FIELD NAME="grade" TYPE="int" LENGTH="11" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Grade score for the submission"/>
-        <FIELD NAME="submissioncomment" TYPE="text" LENGTH="medium" NOTNULL="false" SEQUENCE="false" COMMENT="Submission teacher comment"/>
+        <FIELD NAME="submissioncomment" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Submission teacher comment"/>
         <FIELD NAME="format" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="teacher" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Moodle userId of the teacher who marked the submission"/>
         <FIELD NAME="mailed" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Whether the assignment submission notification has been emailed to the teacher."/>
