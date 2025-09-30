@@ -6,3 +6,7 @@
 	path = filter/panorama
 	url = https://github.com/ucsf-education/moodle-filter_panorama
 	branch = UCSFCLE_405_STABLE
+[submodule "local/panorama"]
+	path = local/panorama
+	url = https://github.com/ucsf-education/moodle-local_panorama
+	branch = UCSFCLE_405_STABLE
