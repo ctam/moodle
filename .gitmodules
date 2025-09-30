@@ -1,0 +1,4 @@
+[submodule "local/replacementapipanorama"]
+	path = local/replacementapipanorama
+	url = https://github.com/ucsf-education/moodle-local_replacementapipanorama
+	branch = main
