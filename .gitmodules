@@ -2,3 +2,7 @@
 	path = local/replacementapipanorama
 	url = https://github.com/ucsf-education/moodle-local_replacementapipanorama
 	branch = main
+[submodule "filter/panorama"]
+	path = filter/panorama
+	url = https://github.com/ucsf-education/moodle-filter_panorama
+	branch = UCSFCLE_405_STABLE
