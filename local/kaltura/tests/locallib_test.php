@@ -34,6 +34,25 @@ require_once($CFG->dirroot.'/local/kaltura/API/KalturaTypes.php');
  */
 class local_kaltura_locallib_testcase extends advanced_testcase {
     /**
+     * Compatibility wrapper for PHPUnit's assertObjectHasProperty.
+     * Older PHPUnit versions had assertObjectHasAttribute; newer versions use assertObjectHasProperty.
+     * This helper delegates to whichever method exists or falls back to a simple property_exists check.
+     */
+    protected function assertObjectHasProperty($property, $object, $message = '') {
+        if (method_exists($this, 'assertObjectHasProperty')) {
+            // If PHPUnit already provides it (unlikely in this context), call parent method.
+            return parent::assertObjectHasProperty($property, $object, $message);
+        }
+
+        if (method_exists($this, 'assertObjectHasAttribute')) {
+            // Older PHPUnit versions provide assertObjectHasAttribute.
+            return $this->assertObjectHasAttribute($property, $object, $message);
+        }
+
+        // Fallback: use property_exists to assert the property is present on the object.
+        $this->assertTrue(property_exists($object, $property), $message ?: "Failed asserting that object has property '$property'.");
+    }
+    /**
      * A Dataprovider method, providing invalid data.
      */
     public function mymedia_test_required_param_fail() {
@@ -716,21 +735,21 @@ class local_kaltura_locallib_testcase extends advanced_testcase {
 
         $result = local_kaltura_format_lti_instance_object($param);
 
-        $this->assertObjectHasAttribute('course', $result);
-        $this->assertObjectHasAttribute('id', $result);
-        $this->assertObjectHasAttribute('name', $result);
-        $this->assertObjectHasAttribute('intro', $result);
-        $this->assertObjectHasAttribute('instructorchoicesendname', $result);
-        $this->assertObjectHasAttribute('instructorchoicesendemailaddr', $result);
-        $this->assertObjectHasAttribute('instructorcustomparameters', $result);
-        $this->assertObjectHasAttribute('instructorchoiceacceptgrades', $result);
-        $this->assertObjectHasAttribute('instructorchoiceallowroster', $result);
-        $this->assertObjectHasAttribute('resourcekey', $result);
-        $this->assertObjectHasAttribute('password', $result);
-        $this->assertObjectHasAttribute('toolurl', $result);
-        $this->assertObjectHasAttribute('securetool', $result);
-        $this->assertObjectHasAttribute('forcessl', $result);
-        $this->assertObjectHasAttribute('cmid', $result);
+        $this->assertObjectHasProperty('course', $result);
+        $this->assertObjectHasProperty('id', $result);
+        $this->assertObjectHasProperty('name', $result);
+        $this->assertObjectHasProperty('intro', $result);
+        $this->assertObjectHasProperty('instructorchoicesendname', $result);
+        $this->assertObjectHasProperty('instructorchoicesendemailaddr', $result);
+        $this->assertObjectHasProperty('instructorcustomparameters', $result);
+        $this->assertObjectHasProperty('instructorchoiceacceptgrades', $result);
+        $this->assertObjectHasProperty('instructorchoiceallowroster', $result);
+        $this->assertObjectHasProperty('resourcekey', $result);
+        $this->assertObjectHasProperty('password', $result);
+        $this->assertObjectHasProperty('toolurl', $result);
+        $this->assertObjectHasProperty('securetool', $result);
+        $this->assertObjectHasProperty('forcessl', $result);
+        $this->assertObjectHasProperty('cmid', $result);
 
         $this->assertEquals(1, $result->course);
         $this->assertEquals(1, $result->id);
@@ -846,21 +865,21 @@ class local_kaltura_locallib_testcase extends advanced_testcase {
         $this->assertTrue($result);
         $record = $DB->get_record('local_kaltura_log', array('module'=> 'mymedia'));
 
-        $this->assertObjectHasAttribute('id', $record);
+        $this->assertObjectHasProperty('id', $record);
 
-        $this->assertObjectHasAttribute('module', $record);
+        $this->assertObjectHasProperty('module', $record);
         $this->assertEquals(KAF_MYMEDIA_MODULE, $record->module);
 
-        $this->assertObjectHasAttribute('type', $record);
+        $this->assertObjectHasProperty('type', $record);
         $this->assertEquals(KALTURA_LOG_REQUEST, $record->type);
 
-        $this->assertObjectHasAttribute('endpoint', $record);
+        $this->assertObjectHasProperty('endpoint', $record);
         $this->assertEquals('http://localhost', $record->endpoint);
 
-        $this->assertObjectHasAttribute('data', $record);
+        $this->assertObjectHasProperty('data', $record);
         $this->assertEquals(serialize($data), $record->data);
 
-        $this->assertObjectHasAttribute('timecreated', $record);
+        $this->assertObjectHasProperty('timecreated', $record);
         $this->assertNotEquals(0, $record);
 
         $result = local_kaltura_log_data(KAF_MEDIAGALLERY_MODULE, 'http://localhost', $data, true);
@@ -868,21 +887,21 @@ class local_kaltura_locallib_testcase extends advanced_testcase {
 
         $record = $DB->get_record('local_kaltura_log', array('module'=> 'coursegallery'));
 
-        $this->assertObjectHasAttribute('id', $record);
+        $this->assertObjectHasProperty('id', $record);
 
-        $this->assertObjectHasAttribute('module', $record);
+        $this->assertObjectHasProperty('module', $record);
         $this->assertEquals(KAF_MEDIAGALLERY_MODULE, $record->module);
 
-        $this->assertObjectHasAttribute('type', $record);
+        $this->assertObjectHasProperty('type', $record);
         $this->assertEquals(KALTURA_LOG_REQUEST, $record->type);
 
-        $this->assertObjectHasAttribute('endpoint', $record);
+        $this->assertObjectHasProperty('endpoint', $record);
         $this->assertEquals('http://localhost', $record->endpoint);
 
-        $this->assertObjectHasAttribute('data', $record);
+        $this->assertObjectHasProperty('data', $record);
         $this->assertEquals(serialize($data), $record->data);
 
-        $this->assertObjectHasAttribute('timecreated', $record);
+        $this->assertObjectHasProperty('timecreated', $record);
         $this->assertNotEquals(0, $record);
     }
 
@@ -905,21 +924,21 @@ class local_kaltura_locallib_testcase extends advanced_testcase {
 
         $record = $DB->get_record('local_kaltura_log', array('module'=> 'phpunit response'));
 
-        $this->assertObjectHasAttribute('id', $record);
+        $this->assertObjectHasProperty('id', $record);
 
-        $this->assertObjectHasAttribute('module', $record);
+        $this->assertObjectHasProperty('module', $record);
         $this->assertEquals('phpunit response', $record->module);
 
-        $this->assertObjectHasAttribute('type', $record);
+        $this->assertObjectHasProperty('type', $record);
         $this->assertEquals(KALTURA_LOG_RESPONSE, $record->type);
 
-        $this->assertObjectHasAttribute('endpoint', $record);
+        $this->assertObjectHasProperty('endpoint', $record);
         $this->assertEquals('http://localhost', $record->endpoint);
 
-        $this->assertObjectHasAttribute('data', $record);
+        $this->assertObjectHasProperty('data', $record);
         $this->assertEquals(serialize($data), $record->data);
 
-        $this->assertObjectHasAttribute('timecreated', $record);
+        $this->assertObjectHasProperty('timecreated', $record);
         $this->assertNotEquals(0, $record);
     }
 
