@@ -1,0 +1,42 @@
+version: 2
+
+updates:
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+
+    # limit how many version-update PRs Dependabot keeps open at once
+    open-pull-requests-limit: 6
+
+    # PRs will target this branch (the branch in your repo)
+    target-branch: "UCSFCLE_405_STABLE"
+
+    # # Exclude entire paths from scanning (optional, new feature)
+    # # (Useful if you never want updates from certain directories.)
+    # exclude-paths:
+    #   - "local/legacy/**"
+    #   - "examples/**"
+
+    # # Ignore specific submodules by name/pattern
+    # ignore:
+    #   # Option A — ignore by submodule path (common)
+    #   # Match the submodule path as Dependabot lists it (e.g. admin/tool/externaltaskmonitor)
+    #   - dependency-name: "admin/tool/externaltaskmonitor"
+
+    #   # Option B — ignore using wildcard to match owner or repo fragments or URLs
+    #   # This demonstrates ignoring all repos under ucsf-education that you don't want updated.
+    #   - dependency-name: "https://github.com/ucsf-education/*"
+
+    #   # Option C — ignore a specific repo tag/version if Dependabot ever reports a "dependency name" with that pattern:
+    #   - dependency-name: "blocks/checklist"
+    #     versions:
+    #       - "4.0.0.1"
+
+    # # Optional: labels added to opened PRs
+    # labels:
+    #   - "deps"
+    #   - "dependabot"
+
