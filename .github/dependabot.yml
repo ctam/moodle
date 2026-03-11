@@ -8,8 +8,8 @@ updates:
       day: "sunday"
       time: "06:00"
 
-    # limit how many version-update PRs Dependabot keeps open at once
-    open-pull-requests-limit: 6
+    # # limit how many version-update PRs Dependabot keeps open at once
+    # open-pull-requests-limit: 6
 
     # PRs will target this branch (the branch in your repo)
     target-branch: "UCSFCLE_405_STABLE"
@@ -20,11 +20,12 @@ updates:
     #   - "local/legacy/**"
     #   - "examples/**"
 
-    # # Ignore specific submodules by name/pattern
-    # ignore:
-    #   # Option A — ignore by submodule path (common)
-    #   # Match the submodule path as Dependabot lists it (e.g. admin/tool/externaltaskmonitor)
-    #   - dependency-name: "admin/tool/externaltaskmonitor"
+    # Ignore specific submodules by name/pattern
+    ignore:
+      # Option A — ignore by submodule path (common)
+      # Match the submodule path as Dependabot lists it (e.g. admin/tool/externaltaskmonitor)
+      - dependency-name: "availability/condition/mobileapp"
+      - dependency-name: "lib/editor/tiny/plugins/fontcolor"
 
     #   # Option B — ignore using wildcard to match owner or repo fragments or URLs
     #   # This demonstrates ignoring all repos under ucsf-education that you don't want updated.
