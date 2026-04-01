@@ -5,6 +5,7 @@ on:
     branches-ignore:
       - main
       - MOODLE_[0-9]+_STABLE
+      - UCSFCLE_[0-9]+_STABLE
     tags-ignore:
       - v[0-9]+.[0-9]+.[0-9]+*
   workflow_dispatch:
@@ -13,6 +14,9 @@ on:
         description: Additional options to apply to PHPUnit
         required: false
         default: ''
+  pull_request:
+    branches:
+      - UCSFCLE_[0-9]+_STABLE
 
 env:
   php: 8.4
@@ -35,6 +39,9 @@ jobs:
 
       - name: Running grunt
         run: npx grunt
+# Do not run Grunt on submodules for now, until we are ready to fix these submodules
+#        with:
+#          submodules: true
 
       - name: Looking for uncommitted changes
         # Add all files to the git index and then run diff --cached to see all changes.
@@ -70,13 +77,15 @@ jobs:
         include:
           # MySQL builds always run with the lowest PHP supported version.
           - os: ubuntu-24.04
-            php: 8.3
+            # We are only testing with PHP 8.4 (the version on production) instead of minimum supported version, 8.3.
+            php: 8.4
             extensions:
             db: mysqli
-          # PostgreSQL builds always run with the highest PHP supported version.
-          - os: ubuntu-24.04
-            php: 8.4
-            db: pgsql
+          # Disable testing with PostgreSQL for now since we are not using it.
+          # # PostgreSQL builds always run with the highest PHP supported version.
+          # - os: ubuntu-24.04
+          #   php: 8.4
+          #   db: pgsql
 
     steps:
       - name: Run MySQL Server
@@ -107,6 +116,8 @@ jobs:
 
       - name: Checking out code from ${{ env.GITHUB_REF_SLUG }}
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Setting up PHPUnit
         env:
