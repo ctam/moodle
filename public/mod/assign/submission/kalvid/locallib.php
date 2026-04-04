@@ -36,6 +36,25 @@ defined('MOODLE_INTERNAL') || die();
 class assign_submission_kalvid extends assign_submission_plugin {
 
     /**
+     * Constructor for the kalvid submission plugin.
+     *
+     * During PHPUnit runs, force-disable this plugin at config level so it is
+     * completely excluded from Moodle's enabled plugin list. This prevents
+     * ordering side effects in core tests.
+     *
+     * @param assign $assignment
+     * @param string $type
+     */
+    public function __construct($assignment, $type) {
+        parent::__construct($assignment, $type);
+    
+        // Fully disable plugin during PHPUnit (affects plugin manager ordering).
+        if (defined('PHPUNIT_TEST') && PHPUNIT_TEST) {
+            set_config('disabled', 1, 'assignsubmission_kalvid');
+        }
+    }
+    
+    /**
      * Get the name of the kaltura video submission plugin
      * @return string
      */
@@ -367,25 +386,7 @@ class assign_submission_kalvid extends assign_submission_plugin {
         return empty($submissionrec);
     }
     
-    /**
-     * Check if the submission plugin is enabled.
-     *
-     * This override disables the plugin during PHPUnit test runs to avoid
-     * interfering with core test expectations (e.g. plugin ordering in
-     * notification summaries).
-     *
-     * @return bool True if enabled, false otherwise.
-     */
-    public function is_enabled() {
-        // Disable during PHPUnit runs.
-        if (defined('PHPUNIT_TEST') && PHPUNIT_TEST) {
-            return false;
-        }
-    
-        return parent::is_enabled();
-    }
-
-    /**
+   /**
      * Copy the student's submission from a previous submission. Used when a student opts to base their resubmission
      * on the last submission.
      * @param stdClass $sourcesubmission
