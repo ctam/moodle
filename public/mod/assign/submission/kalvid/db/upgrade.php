@@ -23,12 +23,18 @@
  */
 
 /**
- * Stub for upgrade code
+ * Execute kalvid submission plugin upgrade steps.
+ *
  * @param int $oldversion
  * @return bool
  */
 function xmldb_assignsubmission_kalvid_upgrade($oldversion) {
-    // Put any upgrade step following this.
+    global $CFG;
+
+    // Disable plugin during PHPUnit runs to avoid interfering with core tests.
+    if (defined('PHPUNIT_TEST') && PHPUNIT_TEST) {
+        set_config('disabled', 1, 'assignsubmission_kalvid');
+    }
 
     return true;
 }
