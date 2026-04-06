@@ -87,6 +87,19 @@ class mod_assign_generator extends testing_module_generator {
             }
         }
 
+        // Ensure submission plugin defaults are explicitly set.
+        // This prevents additional plugins from changing implicit defaults.
+        $submissiondefaults = [
+            'assignsubmission_file_enabled' => 1,
+            'assignsubmission_onlinetext_enabled' => 1,
+        ];
+        
+        foreach ($submissiondefaults as $key => $value) {
+            if (!isset($record->{$key})) {
+                $record->{$key} = $value;
+            }
+        }
+        
         return parent::create_instance($record, (array)$options);
     }
 
