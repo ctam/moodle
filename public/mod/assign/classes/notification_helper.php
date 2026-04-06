@@ -756,6 +756,27 @@ class notification_helper {
     protected static function get_assignment_data(int $assignmentid): \assign {
         [$course, $assigncm] = get_course_and_cm_from_instance($assignmentid, 'assign');
         $cmcontext = \context_module::instance($assigncm->id);
-        return new \assign($cmcontext, $assigncm, $course);
+    
+        $assign = new \assign($cmcontext, $assigncm, $course);
+    
+        // ===== DEBUG START =====
+        fwrite(STDERR, "\n==== DEBUG: submission plugins order ====\n");
+    
+        $plugins = $assign->get_submission_plugins();
+        foreach ($plugins as $plugin) {
+            fwrite(STDERR, get_class($plugin) . "\n");
+        }
+    
+        fwrite(STDERR, "==== END DEBUG ====\n\n");
+    
+        fwrite(STDERR, "\n==== DEBUG: enabled state ====\n");
+        foreach ($plugins as $plugin) {
+            $enabled = method_exists($plugin, 'is_enabled') ? $plugin->is_enabled() : 'no method';
+            fwrite(STDERR, get_class($plugin) . " => " . var_export($enabled, true) . "\n");
+        }
+        fwrite(STDERR, "==== END ENABLED ====\n\n");
+        // ===== DEBUG END =====
+    
+        return $assign;
     }
 }
