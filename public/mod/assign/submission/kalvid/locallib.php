@@ -416,22 +416,6 @@ class assign_submission_kalvid extends assign_submission_plugin {
         return (bool) $this->get_config('enabled');
     }
 
-    /**
-     * Check if this plugin is visible in the assignment.
-     *
-     * During PHPUnit runs, hide the plugin completely so it does not
-     * participate in plugin configuration or ordering.
-     *
-     * @return bool
-     */
-    public function is_visible() {
-        if (defined('PHPUNIT_TEST') && PHPUNIT_TEST) {
-            return false;
-        }
-    
-        return parent::is_visible();
-    }    
-    
    /**
      * Copy the student's submission from a previous submission. Used when a student opts to base their resubmission
      * on the last submission.
