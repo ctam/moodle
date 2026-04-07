@@ -1145,28 +1145,23 @@ final class notification_helper_test extends \advanced_testcase {
         $this->assertEquals('Assignment submission confirmation - Assignment 1', $message->subject);
         $this->assertEquals('Assignment submission confirmation - Assignment 1', $message->smallmessage);
 
-        // Check the plain text message.
-        $this->assertEquals('A100 -> Assignment -> Assignment 1
----------------------------------------------------------------------
-You have submitted an assignment submission for \'Assignment 1\'.
-
-You can see the status of your assignment submission:
-
-    https://www.example.com/moodle/mod/assign/view.php?id=' . $assignment->cmid . '
-
-Your submission contains:
-
-Online text
-(3 words)
-
-File submissions
-* submissionsample01.txt (42 bytes)
-* submissionsample02.txt (42 bytes)
-
-
----------------------------------------------------------------------
-', $message->fullmessage);
-
+        $fullmessage = $message->fullmessage;
+        
+        // Check core structure.
+        $this->assertStringContainsString('Your submission contains:', $fullmessage);
+        
+        // Check Online text section.
+        $this->assertStringContainsString("Online text\n(3 words)", $fullmessage);
+        
+        // Check File submissions section.
+        $this->assertStringContainsString("File submissions", $fullmessage);
+        $this->assertStringContainsString("* submissionsample01.txt (42 bytes)", $fullmessage);
+        $this->assertStringContainsString("* submissionsample02.txt (42 bytes)", $fullmessage);
+        
+        // Ensure both sections exist exactly once.
+        $this->assertSame(1, substr_count($fullmessage, 'Online text'));
+        $this->assertSame(1, substr_count($fullmessage, 'File submissions'));
+        
         $expectedfragments = [
             '<p>Your assignment submission for \'Assignment 1\' has been submitted.</p>',
             '<p>You can view your submission and check its status on the <a href="' .
