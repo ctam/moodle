@@ -1155,9 +1155,15 @@ final class notification_helper_test extends \advanced_testcase {
         
         // Check File submissions section.
         $this->assertStringContainsString("File submissions", $fullmessage);
-        $this->assertStringContainsString("* submissionsample01.txt (42 bytes)", $fullmessage);
-        $this->assertStringContainsString("* submissionsample02.txt (42 bytes)", $fullmessage);
-        
+        $this->assertMatchesRegularExpression(
+            '/\* submissionsample01\.txt \(42\s+bytes\)/',
+            $message->fullmessage
+        );        
+        $this->assertMatchesRegularExpression(
+            '/\* submissionsample02\.txt \(42\s+bytes\)/',
+            $message->fullmessage
+        );
+
         // Ensure both sections exist exactly once.
         $this->assertSame(1, substr_count($fullmessage, 'Online text'));
         $this->assertSame(1, substr_count($fullmessage, 'File submissions'));
