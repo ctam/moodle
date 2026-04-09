@@ -36,7 +36,7 @@ $capabilities = array(
             'manager' => CAP_ALLOW,
         )
     ),
-    'tiny/kalturamedia:use' => [
+    'local/kaltura:use' => [
         'captype' => 'read',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
