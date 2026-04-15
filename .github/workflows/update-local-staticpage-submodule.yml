@@ -1,0 +1,72 @@
+name: Update staticpage submodule
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily
+  workflow_dispatch:
+
+jobs:
+  update-submodule:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Extract current tag
+        id: current
+        run: |
+          TAG=$(git config -f .gitmodules --get submodule.local/staticpage.tag)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Fetch submodule branch
+        run: |
+          cd local/staticpage
+          git fetch origin MOODLE_405_STABLE
+
+      - name: Get latest tag on branch
+        id: latest
+        run: |
+          cd local/staticpage
+          TAG=$(git tag --merged origin/MOODLE_405_STABLE --sort=-v:refname | head -n1)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Compare tags
+        id: compare
+        run: |
+          if [ "${{ steps.current.outputs.tag }}" != "${{ steps.latest.outputs.tag }}" ]; then
+            echo "update=true" >> $GITHUB_OUTPUT
+          else
+            echo "update=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update submodule and tag
+        if: steps.compare.outputs.update == 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git checkout -b update-staticpage-${{ steps.latest.outputs.tag }}
+
+          git submodule update --remote local/staticpage
+
+          cd local/staticpage
+          git checkout ${{ steps.latest.outputs.tag }}
+          cd -
+
+          git config -f .gitmodules submodule.local/staticpage.tag ${{ steps.latest.outputs.tag }}
+
+          git add .gitmodules local/staticpage
+          git commit -m "Update staticpage to ${{ steps.latest.outputs.tag }}"
+
+      - name: Create PR
+        if: steps.compare.outputs.update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: update-staticpage-${{ steps.latest.outputs.tag }}
+          title: "Update staticpage to ${{ steps.latest.outputs.tag }}"
+          body: |
+            Updates submodule `local/staticpage` to `${{ steps.latest.outputs.tag }}`.
