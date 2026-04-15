@@ -2,4 +2,4 @@
 	path = public/local/staticpage
 	url = https://github.com/moodle-an-hochschulen/moodle-local_staticpage
 	branch = MOODLE_501_STABLE
-	tag = v5.1-r1
+	tag = v5.0-r1
