@@ -2,7 +2,7 @@ name: Update staticpage submodule
 
 on:
   schedule:
-    - cron: "0 6 * * *" # daily
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 jobs:
@@ -19,19 +19,25 @@ jobs:
       - name: Extract current tag
         id: current
         run: |
-          TAG=$(git config -f .gitmodules --get submodule.local/staticpage.tag)
+          TAG=$(git config -f .gitmodules --get submodule.public/local/staticpage.tag)
           echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Extract branch from .gitmodules
+        id: branch
+        run: |
+          BRANCH=$(git config -f .gitmodules --get submodule.public/local/staticpage.branch)
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Fetch submodule branch
         run: |
-          cd local/staticpage
-          git fetch origin MOODLE_405_STABLE
+          cd public/local/staticpage
+          git fetch origin ${{ steps.branch.outputs.branch }}
 
       - name: Get latest tag on branch
         id: latest
         run: |
-          cd local/staticpage
-          TAG=$(git tag --merged origin/MOODLE_405_STABLE --sort=-v:refname | head -n1)
+          cd public/local/staticpage
+          TAG=$(git tag --merged origin/${{ steps.branch.outputs.branch }} --sort=-v:refname | head -n1)
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Compare tags
@@ -51,15 +57,15 @@ jobs:
 
           git checkout -b update-staticpage-${{ steps.latest.outputs.tag }}
 
-          git submodule update --remote local/staticpage
+          git submodule update --remote public/local/staticpage
 
-          cd local/staticpage
+          cd public/local/staticpage
           git checkout ${{ steps.latest.outputs.tag }}
           cd -
 
-          git config -f .gitmodules submodule.local/staticpage.tag ${{ steps.latest.outputs.tag }}
+          git config -f .gitmodules submodule.public/local/staticpage.tag ${{ steps.latest.outputs.tag }}
 
-          git add .gitmodules local/staticpage
+          git add .gitmodules public/local/staticpage
           git commit -m "Update staticpage to ${{ steps.latest.outputs.tag }}"
 
       - name: Create PR
@@ -69,4 +75,4 @@ jobs:
           branch: update-staticpage-${{ steps.latest.outputs.tag }}
           title: "Update staticpage to ${{ steps.latest.outputs.tag }}"
           body: |
-            Updates submodule `local/staticpage` to `${{ steps.latest.outputs.tag }}`.
+            Updates submodule `public/local/staticpage` to `${{ steps.latest.outputs.tag }}`.
