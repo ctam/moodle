@@ -1,78 +1,125 @@
-name: Update staticpage submodule
+name: Update submodules based on tracked branches and tags
 
 on:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  BASE_BRANCH: UCSFCLE_501_STABLE
+  IGNORE_LIST: |
+    public/availability/condition/mobileapp
+    public/lib/editor/tiny/plugins/fontcolor
+
 jobs:
-  update-submodule:
+  update-submodules:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
+          ref: ${{ env.BASE_BRANCH }}
           submodules: true
           fetch-depth: 0
 
-      - name: Extract current tag
-        id: current
-        run: |
-          TAG=$(git config -f .gitmodules --get submodule.public/local/staticpage.tag)
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
-      - name: Extract branch from .gitmodules
-        id: branch
-        run: |
-          BRANCH=$(git config -f .gitmodules --get submodule.public/local/staticpage.branch)
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-      - name: Fetch submodule branch
-        run: |
-          cd public/local/staticpage
-          git fetch origin ${{ steps.branch.outputs.branch }}
-
-      - name: Get latest tag on branch
-        id: latest
-        run: |
-          cd public/local/staticpage
-          TAG=$(git tag --merged origin/${{ steps.branch.outputs.branch }} --sort=-v:refname | head -n1)
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
-      - name: Compare tags
-        id: compare
-        run: |
-          if [ "${{ steps.current.outputs.tag }}" != "${{ steps.latest.outputs.tag }}" ]; then
-            echo "update=true" >> $GITHUB_OUTPUT
-          else
-            echo "update=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Update submodule and tag
-        if: steps.compare.outputs.update == 'true'
+      - name: Configure git
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git checkout -b update-staticpage-${{ steps.latest.outputs.tag }}
+      - name: Process submodules
+        run: |
+          set -e
 
-          git submodule update --remote public/local/staticpage
+          echo "$IGNORE_LIST" > ignore.txt
 
-          cd public/local/staticpage
-          git checkout ${{ steps.latest.outputs.tag }}
-          cd -
+          BASE_BRANCH="${BASE_BRANCH}"
 
-          git config -f .gitmodules submodule.public/local/staticpage.tag ${{ steps.latest.outputs.tag }}
+          git config -f .gitmodules --get-regexp path | while read -r key path; do
+            echo "-----------------------------"
+            echo "Processing $path"
 
-          git add .gitmodules public/local/staticpage
-          git commit -m "Update staticpage to ${{ steps.latest.outputs.tag }}"
+            # Ignore check
+            if grep -qx "$path" ignore.txt; then
+              echo "Skipping $path (ignored)"
+              continue
+            fi
 
-      - name: Create PR
-        if: steps.compare.outputs.update == 'true'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: update-staticpage-${{ steps.latest.outputs.tag }}
-          title: "Update staticpage to ${{ steps.latest.outputs.tag }}"
-          body: |
-            Updates submodule `public/local/staticpage` to `${{ steps.latest.outputs.tag }}`.
+            # Extract submodule name
+            name=$(echo "$key" | sed -E 's/submodule\.(.*)\.path/\1/')
+
+            BRANCH=$(git config -f .gitmodules --get submodule.$name.branch || true)
+            CURRENT_TAG=$(git config -f .gitmodules --get submodule.$name.tag || true)
+
+            if [[ -z "$BRANCH" || -z "$CURRENT_TAG" ]]; then
+              echo "Skipping $path (missing branch or tag)"
+              continue
+            fi
+
+            echo "Branch: $BRANCH"
+            echo "Current tag: $CURRENT_TAG"
+
+            # Fetch latest branch
+            cd "$path"
+            git fetch origin "$BRANCH"
+
+            LATEST_TAG=$(git tag --merged origin/"$BRANCH" --sort=-v:refname | head -n1)
+            cd -
+
+            echo "Latest tag: $LATEST_TAG"
+
+            if [[ -z "$LATEST_TAG" ]]; then
+              echo "No tags found on branch, skipping"
+              continue
+            fi
+
+            if [[ "$CURRENT_TAG" == "$LATEST_TAG" ]]; then
+              echo "No update needed"
+              continue
+            fi
+
+            BRANCH_NAME="update-$(echo $path | tr '/' '-')-$LATEST_TAG"
+
+            echo "Preparing branch $BRANCH_NAME"
+
+            # Always reset to base branch cleanly
+            git checkout "$BASE_BRANCH"
+            git pull origin "$BASE_BRANCH"
+
+            # Skip if branch already exists remotely
+            if git ls-remote --exit-code --heads origin "$BRANCH_NAME" >/dev/null 2>&1; then
+              echo "Branch $BRANCH_NAME already exists, skipping"
+              continue
+            fi
+
+            git checkout -b "$BRANCH_NAME"
+
+            # Update submodule
+            git submodule update --remote "$path"
+
+            cd "$path"
+            git checkout "$LATEST_TAG"
+            cd -
+
+            # Update .gitmodules
+            git config -f .gitmodules submodule.$name.tag "$LATEST_TAG"
+
+            git add "$path" .gitmodules
+            git commit -m "Update $path to $LATEST_TAG"
+
+            git push origin "$BRANCH_NAME"
+
+            # Create PR with explicit base
+            gh pr create \
+              --base "$BASE_BRANCH" \
+              --head "$BRANCH_NAME" \
+              --title "Update $path to $LATEST_TAG" \
+              --body "Updates submodule \`$path\` from \`$CURRENT_TAG\` to \`$LATEST_TAG\`." \
+              || echo "PR may already exist"
+
+          done
