@@ -114,12 +114,10 @@ jobs:
           git reset --hard
           git clean -fd
 
-      - name: Create sync branch
+      - name: Merge tag into working tree
         if: steps.check.outputs.already_merged == 'false'
         run: |
           TAG=${{ steps.latest_tag.outputs.latest_tag }}
-
-          git checkout -B Merge-Moodle-$TAG
           git merge $TAG --no-edit
 
       - name: Create Pull Request
