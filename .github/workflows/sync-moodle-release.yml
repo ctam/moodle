@@ -1,4 +1,4 @@
-name: Sync Moodle 4.5
+name: Check for new Moodle 4.5 release
 
 on:
   schedule:

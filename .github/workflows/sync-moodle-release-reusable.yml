@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       target_branch:
-        required: true
+        required: false
         type: string
 
 jobs:
@@ -15,18 +15,32 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       UPSTREAM_BRANCH: ${{ inputs.upstream_branch }}
-      TARGET_BRANCH: ${{ inputs.target_branch }}
+      TARGET_BRANCH: ${{ inputs.target_branch || github.ref_name }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Debug branch resolution
+        run: |
+          echo "Resolved TARGET_BRANCH=$TARGET_BRANCH"
+          echo "Workflow running on ref=${GITHUB_REF_NAME}"
+
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          ref: ${{ env.TARGET_BRANCH }}
+
+      - name: Configure git identity
+        run: |
+          # 41898282 is GitHub's internal user ID for github-actions[bot],
+          # used with the noreply email to attribute commits to the Actions bot
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Add upstream + fetch tags
         run: |
           git remote add upstream https://github.com/moodle/moodle.git
-          git fetch upstream --tags
+          git fetch upstream "+refs/heads/*:refs/remotes/upstream/*" --tags
 
       - name: Derive allowed version prefix
         id: version
@@ -77,27 +91,54 @@ jobs:
             echo "already_merged=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Get current merged version
+        id: current_tag
+        run: |
+          PREFIX=${{ steps.version.outputs.prefix }}
+
+          CURRENT=$(git tag \
+            --merged HEAD \
+            --list "${PREFIX}*" \
+            --sort=-v:refname | head -n 1)
+
+          if [ -z "$CURRENT" ]; then
+            CURRENT="none"
+          fi
+
+          echo "current_tag=$CURRENT" >> $GITHUB_OUTPUT
+          echo "Current tag: $CURRENT"
+
+      - name: Ensure clean working tree
+        run: |
+          git checkout $TARGET_BRANCH
+          git reset --hard
+          git clean -fd
+
       - name: Create sync branch
         if: steps.check.outputs.already_merged == 'false'
         run: |
           TAG=${{ steps.latest_tag.outputs.latest_tag }}
 
-          git checkout -b sync-$TAG || git checkout sync-$TAG
-          git merge $TAG --no-edit || echo "Merge conflicts"
-
-      - name: Push branch
-        if: steps.check.outputs.already_merged == 'false'
-        run: |
-          TAG=${{ steps.latest_tag.outputs.latest_tag }}
-          git push origin sync-$TAG --force
+          git checkout -B Merge-Moodle-$TAG
+          git merge $TAG --no-edit
 
       - name: Create Pull Request
         if: steps.check.outputs.already_merged == 'false'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
-          branch: sync-${{ steps.latest_tag.outputs.latest_tag }}
+          branch: Merge-Moodle-${{ steps.latest_tag.outputs.latest_tag }}
           base: ${{ env.TARGET_BRANCH }}
-          title: "Sync Moodle ${{ steps.latest_tag.outputs.latest_tag }}"
+          title: >
+            Update to Moodle ${{ steps.latest_tag.outputs.latest_tag }}
+            from ${{ steps.current_tag.outputs.current_tag }}
           body: |
-            Automated merge of upstream tag `${{ steps.latest_tag.outputs.latest_tag }}`
-            from `${{ env.UPSTREAM_BRANCH }}` into `${{ env.TARGET_BRANCH }}`.
+            Automated Moodle upgrade
+
+            **From:** `${{ steps.current_tag.outputs.current_tag }}`
+            **To:** `${{ steps.latest_tag.outputs.latest_tag }}`
+            **Upstream branch:** `${{ env.UPSTREAM_BRANCH }}`
+
+            This PR merges the upstream release tag into `${{ env.TARGET_BRANCH }}`.
+
+          commit-message: |
+            Update Moodle to ${{ steps.latest_tag.outputs.latest_tag }}
