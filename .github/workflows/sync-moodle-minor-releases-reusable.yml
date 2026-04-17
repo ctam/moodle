@@ -124,6 +124,26 @@ jobs:
         run: |
           TAG=${{ steps.latest_tag.outputs.latest_tag }}
           git merge $TAG --no-edit
+        # Prevent upstream from modifying your workflows
+        git checkout HEAD -- .github/workflows
+
+      - name: Merge tag into working tree
+        if: steps.check.outputs.already_merged == 'false'
+        id: merge
+        run: |
+          TAG=${{ steps.latest_tag.outputs.latest_tag }}
+
+          git merge $TAG --no-edit
+
+          # Detect if workflows changed
+          if git diff --name-only HEAD~1 HEAD | grep -q "^.github/workflows/"; then
+            echo "workflow_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "workflow_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Revert workflow changes
+          git checkout HEAD -- .github/workflows
 
       - name: Create Pull Request
         if: steps.check.outputs.already_merged == 'false'
@@ -131,9 +151,11 @@ jobs:
         with:
           branch: Merge-Moodle-${{ steps.latest_tag.outputs.latest_tag }}
           base: ${{ env.TARGET_BRANCH }}
+
           title: >
             Update to Moodle ${{ steps.latest_tag.outputs.latest_tag }}
             from ${{ steps.current_tag.outputs.current_tag }}
+
           body: |
             Automated Moodle upgrade
 
@@ -143,8 +165,34 @@ jobs:
 
             This PR merges the upstream release tag into `${{ env.TARGET_BRANCH }}`.
 
+            ${{ steps.merge.outputs.workflow_changed == 'true' && '
+            ---
+            ⚠️ **Workflow Changes Detected (Ignored)**
+
+            Upstream changes to `.github/workflows/` were detected and intentionally **NOT merged**.
+
+            If you want to review/apply them manually:
+
+            ```bash
+            git fetch upstream
+            git checkout ' + steps.latest_tag.outputs.latest_tag + '
+            git diff HEAD .github/workflows
+            ```
+
+            Or merge them manually:
+
+            ```bash
+            git checkout ' + env.TARGET_BRANCH + '
+            git merge ' + steps.latest_tag.outputs.latest_tag + '
+            ```
+            ' || '' }}
+
           commit-message: |
             Update Moodle to ${{ steps.latest_tag.outputs.latest_tag }}
 
           assignees: ${{ inputs.assignees }}
           reviewers: ${{ inputs.reviewers }}
+
+          labels: |
+            moodle-core
+            ${{ steps.merge.outputs.workflow_changed == 'true' && 'upstream-workflow-change' || '' }}
