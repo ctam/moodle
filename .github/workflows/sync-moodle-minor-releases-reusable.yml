@@ -1,4 +1,4 @@
-name: Reusable Moodle Release Sync
+name: Reusable Moodle Minor Release Sync
 
 on:
   workflow_call:
@@ -15,38 +15,60 @@ on:
       reviewers:
         required: false
         type: string
+
 jobs:
   sync:
+    name: Merge upstream Moodle minor release
     runs-on: ubuntu-latest
 
     env:
+      # Force newer Node runtime for actions (future-proofing)
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+      # Inputs
       UPSTREAM_BRANCH: ${{ inputs.upstream_branch }}
       TARGET_BRANCH: ${{ inputs.target_branch || github.ref_name }}
 
     steps:
+      # ------------------------------------------------------------
+      # Debug context (helps when workflow is reused in different repos)
+      # ------------------------------------------------------------
       - name: Debug branch resolution
         run: |
-          echo "Resolved TARGET_BRANCH=$TARGET_BRANCH"
-          echo "Workflow running on ref=${GITHUB_REF_NAME}"
+          echo "TARGET_BRANCH=$TARGET_BRANCH"
+          echo "GITHUB_REF_NAME=$GITHUB_REF_NAME"
 
+      # ------------------------------------------------------------
+      # Checkout target branch with full history (needed for tag + merge logic)
+      # ------------------------------------------------------------
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ env.TARGET_BRANCH }}
 
+      # ------------------------------------------------------------
+      # Configure git identity for commits created by this workflow
+      # ------------------------------------------------------------
       - name: Configure git identity
         run: |
-          # 41898282 is GitHub's internal user ID for github-actions[bot],
-          # used with the noreply email to attribute commits to the Actions bot
+          # GitHub Actions bot identity
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Add upstream + fetch tags
+      # ------------------------------------------------------------
+      # Add upstream Moodle repo and fetch everything needed
+      # ------------------------------------------------------------
+      - name: Add upstream + fetch
         run: |
           git remote add upstream https://github.com/moodle/moodle.git
+
+          # Fetch all branches + tags so merge-base + tag filtering works reliably
           git fetch upstream "+refs/heads/*:refs/remotes/upstream/*" --tags
 
+      # ------------------------------------------------------------
+      # Convert MOODLE_405_STABLE → v4.5.*
+      # Used to filter only relevant release tags
+      # ------------------------------------------------------------
       - name: Derive allowed version prefix
         id: version
         run: |
@@ -55,10 +77,16 @@ jobs:
           MINOR=$(echo "$RAW" | cut -c2-3 | sed 's/^0//')
 
           PREFIX="v${MAJOR}.${MINOR}."
-          echo "prefix=$PREFIX" >> $GITHUB_OUTPUT
-          echo "Allowed prefix: $PREFIX"
 
-      - name: Find latest valid tag on branch
+          echo "prefix=$PREFIX" >> $GITHUB_OUTPUT
+          echo "Using tag prefix: $PREFIX"
+
+      # ------------------------------------------------------------
+      # Find latest upstream tag that:
+      # - matches version prefix
+      # - exists on the upstream stable branch
+      # ------------------------------------------------------------
+      - name: Find latest valid tag
         id: latest_tag
         run: |
           PREFIX=${{ steps.version.outputs.prefix }}
@@ -69,33 +97,45 @@ jobs:
             --sort=-v:refname | head -n 1)
 
           if [ -z "$TAG" ]; then
-            echo "No matching tag found!" >&2
+            echo "No matching tag found" >&2
             exit 1
           fi
 
           echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Latest upstream tag: $TAG"
 
-      - name: Verify tag is on branch
+      # ------------------------------------------------------------
+      # Sanity check: ensure tag is actually on the upstream branch
+      # ------------------------------------------------------------
+      - name: Verify tag ancestry
         run: |
           TAG=${{ steps.latest_tag.outputs.latest_tag }}
 
-          if ! git merge-base --is-ancestor "$TAG" "upstream/$UPSTREAM_BRANCH"; then
-            echo "Tag $TAG is NOT on $UPSTREAM_BRANCH" >&2
+          git merge-base --is-ancestor "$TAG" "upstream/$UPSTREAM_BRANCH" || {
+            echo "Tag $TAG is NOT on $UPSTREAM_BRANCH"
             exit 1
-          fi
+          }
 
+      # ------------------------------------------------------------
+      # Skip if already merged
+      # ------------------------------------------------------------
       - name: Check if already merged
         id: check
         run: |
           git checkout $TARGET_BRANCH
+
           TAG=${{ steps.latest_tag.outputs.latest_tag }}
 
           if git merge-base --is-ancestor "$TAG" HEAD; then
             echo "already_merged=true" >> $GITHUB_OUTPUT
+            echo "Tag already merged"
           else
             echo "already_merged=false" >> $GITHUB_OUTPUT
           fi
 
+      # ------------------------------------------------------------
+      # Determine current version in target branch (for PR title)
+      # ------------------------------------------------------------
       - name: Get current merged version
         id: current_tag
         run: |
@@ -106,39 +146,48 @@ jobs:
             --list "${PREFIX}*" \
             --sort=-v:refname | head -n 1)
 
-          if [ -z "$CURRENT" ]; then
-            CURRENT="none"
-          fi
+          echo "current_tag=${CURRENT:-none}" >> $GITHUB_OUTPUT
 
-          echo "current_tag=$CURRENT" >> $GITHUB_OUTPUT
-          echo "Current tag: $CURRENT"
-
-      - name: Ensure clean working tree
+      # ------------------------------------------------------------
+      # Ensure clean working tree before merge
+      # ------------------------------------------------------------
+      - name: Reset working tree
         run: |
           git checkout $TARGET_BRANCH
           git reset --hard
           git clean -fd
 
-      - name: Merge tag into working tree
+      # ------------------------------------------------------------
+      # Merge upstream tag
+      # - Detect workflow changes
+      # - Revert them to avoid GitHub permission errors
+      # ------------------------------------------------------------
+      - name: Merge upstream tag
         if: steps.check.outputs.already_merged == 'false'
         id: merge
         run: |
           TAG=${{ steps.latest_tag.outputs.latest_tag }}
-      
-          git merge $TAG --no-edit
-      
-          # Detect if workflows changed
+
+          git merge $TAG --no-edit || {
+            echo "Merge conflict detected"
+            exit 1
+          }
+
+          # Detect workflow changes introduced by upstream
           if git diff --name-only ORIG_HEAD HEAD | grep -q "^.github/workflows/"; then
             echo "workflow_changed=true" >> $GITHUB_OUTPUT
-      
-            # Revert workflow changes
+
+            # Revert workflow changes to avoid GitHub permission issues
             git checkout ORIG_HEAD -- .github/workflows
             git add .github/workflows
             git commit -m "Revert upstream workflow changes"
           else
             echo "workflow_changed=false" >> $GITHUB_OUTPUT
           fi
-          
+
+      # ------------------------------------------------------------
+      # Build optional warning message for PR body
+      # ------------------------------------------------------------
       - name: Build workflow warning message
         id: workflow_msg
         run: |
@@ -148,17 +197,15 @@ jobs:
               echo "---"
               echo "⚠️ **Workflow Changes Detected (Ignored)**"
               echo ""
-              echo "Upstream changes to \`.github/workflows/\` were detected and intentionally **NOT merged**."
+              echo "Upstream changes to \`.github/workflows/\` were NOT merged."
               echo ""
-              echo "If you want to review them:"
-              echo ""
+              echo "Review changes:"
               echo "\`\`\`bash"
               echo "git fetch upstream"
               echo "git diff ${{ env.TARGET_BRANCH }} ${{ steps.latest_tag.outputs.latest_tag }} -- .github/workflows"
               echo "\`\`\`"
               echo ""
-              echo "To merge them manually:"
-              echo ""
+              echo "Merge manually if needed:"
               echo "\`\`\`bash"
               echo "git checkout ${{ env.TARGET_BRANCH }}"
               echo "git merge ${{ steps.latest_tag.outputs.latest_tag }}"
@@ -169,15 +216,21 @@ jobs:
             echo "message=" >> $GITHUB_OUTPUT
           fi
 
+      # ------------------------------------------------------------
+      # Compute labels dynamically
+      # ------------------------------------------------------------
       - name: Set labels
         id: labels
         run: |
           if [ "${{ steps.merge.outputs.workflow_changed }}" = "true" ]; then
-            echo "extra_label=upstream-workflow-change" >> $GITHUB_OUTPUT
+            echo "labels=moodle-core,upstream-workflow-change" >> $GITHUB_OUTPUT
           else
-            echo "extra_label=" >> $GITHUB_OUTPUT
+            echo "labels=moodle-core" >> $GITHUB_OUTPUT
           fi
-          
+
+      # ------------------------------------------------------------
+      # Create or update PR
+      # ------------------------------------------------------------
       - name: Create Pull Request
         if: steps.check.outputs.already_merged == 'false'
         uses: peter-evans/create-pull-request@v7
@@ -191,13 +244,11 @@ jobs:
 
           body: |
             Automated Moodle upgrade
-          
+
             **From:** `${{ steps.current_tag.outputs.current_tag }}`
             **To:** `${{ steps.latest_tag.outputs.latest_tag }}`
             **Upstream branch:** `${{ env.UPSTREAM_BRANCH }}`
-          
-            This PR merges the upstream release tag into `${{ env.TARGET_BRANCH }}`.
-          
+
             ${{ steps.workflow_msg.outputs.message }}
 
           commit-message: |
@@ -206,6 +257,4 @@ jobs:
           assignees: ${{ inputs.assignees }}
           reviewers: ${{ inputs.reviewers }}
 
-          labels: |
-            moodle-core
-            ${{ steps.labels.outputs.extra_label }}
+          labels: ${{ steps.labels.outputs.labels }}
