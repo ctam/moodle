@@ -128,15 +128,17 @@ jobs:
           git merge $TAG --no-edit
       
           # Detect if workflows changed
-          if git diff --name-only HEAD~1 HEAD | grep -q "^.github/workflows/"; then
+          if git diff --name-only ORIG_HEAD HEAD | grep -q "^.github/workflows/"; then
             echo "workflow_changed=true" >> $GITHUB_OUTPUT
+      
+            # Revert workflow changes
+            git checkout HEAD -- .github/workflows
+            git add .github/workflows
+            git commit -m "Revert upstream workflow changes"
           else
             echo "workflow_changed=false" >> $GITHUB_OUTPUT
           fi
-      
-          # Revert workflow changes
-          git checkout HEAD -- .github/workflows
-    
+          
       - name: Build workflow warning message
         id: workflow_msg
         run: |
