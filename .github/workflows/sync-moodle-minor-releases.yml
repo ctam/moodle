@@ -3,26 +3,39 @@ name: Sync Moodle Minor Releases
 on:
   schedule:
     - cron: "0 * * * *"
-  workflow_dispatch:
-
-env:
-  MOODLE_VERSION: "4.5"
-  UPSTREAM_BRANCH: MOODLE_405_STABLE
-  TARGET_BRANCH: UCSFCLE_405_STABLE
+  workflow_dispatch: {}
 
 jobs:
   sync:
-    name: >
-      Moodle ${{ env.MOODLE_VERSION }} Sync:
-      ${{ env.UPSTREAM_BRANCH }} → ${{ env.TARGET_BRANCH }}
+    # name: >
+    #   Moodle ${{ env.MOODLE_VERSION }} Sync:
+    #   ${{ env.UPSTREAM_BRANCH }} → ${{ env.TARGET_BRANCH }}
+    name: Sync ${{ matrix.version }} to UCSFCLE Stable
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: "Moodle 4.5"
+            upstream: MOODLE_405_STABLE
+            target: UCSFCLE_405_STABLE
+            assignees: ctam
+            reviewers: ucsf-education/moodlecodereviewers
+          # - version: "Moodle 5.1"
+          #   upstream: MOODLE_501_STABLE
+          #   target: UCSFCLE_501_STABLE
+          #   assignees: ctam
+          #   reviewers: ucsf-education/moodlecodereviewers
+      
     uses: ./.github/workflows/sync-moodle-minor-releases-reusable.yml
 
     with:
-      upstream_branch: ${{ env.UPSTREAM_BRANCH }}
-      target_branch: ${{ env.TARGET_BRANCH }}
-
-      # ----------------------------------------------------------
-      # People metadata (optional GitHub PR assignment behavior)
-      # ----------------------------------------------------------
-      assignees: ctam
-      reviewers: ucsf-education/moodlecodereviewers
+      upstream_branch: ${{ matrix.upstream }}
+      target_branch: ${{ matrix.target }}
+      assignees: ${{ matrix.assignees }}
+      reviewers: ${{ matrix.reviewers }}
+      # # ----------------------------------------------------------
+      # # People metadata (optional GitHub PR assignment behavior)
+      # # ----------------------------------------------------------
+      # assignees: ctam
+      # reviewers: ucsf-education/moodlecodereviewers
