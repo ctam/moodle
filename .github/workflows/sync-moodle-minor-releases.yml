@@ -7,6 +7,7 @@ on:
 
 jobs:
   sync:
+    name: Moodle 4.5.x Sync
     uses: ./.github/workflows/sync-moodle-minor-releases-reusable.yml
     with:
       upstream_branch: MOODLE_405_STABLE
