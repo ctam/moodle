@@ -132,7 +132,7 @@ jobs:
             echo "workflow_changed=true" >> $GITHUB_OUTPUT
       
             # Revert workflow changes
-            git checkout HEAD -- .github/workflows
+            git checkout ORIG_HEAD -- .github/workflows
             git add .github/workflows
             git commit -m "Revert upstream workflow changes"
           else
@@ -154,9 +154,7 @@ jobs:
               echo ""
               echo "\`\`\`bash"
               echo "git fetch upstream"
-              echo "git checkout ${{ steps.latest_tag.outputs.latest_tag }}"
-              echo "git diff HEAD .github/workflows"
-              echo "\`\`\`"
+              echo "git diff ${{ env.TARGET_BRANCH }} ${{ steps.latest_tag.outputs.latest_tag }} -- .github/workflows"              echo "\`\`\`"
               echo ""
               echo "To merge them manually:"
               echo ""
@@ -168,6 +166,15 @@ jobs:
             } >> $GITHUB_OUTPUT
           else
             echo "message=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set labels
+        id: labels
+        run: |
+          if [ "${{ steps.merge.outputs.workflow_changed }}" = "true" ]; then
+            echo "extra_label=upstream-workflow-change" >> $GITHUB_OUTPUT
+          else
+            echo "extra_label=" >> $GITHUB_OUTPUT
           fi
           
       - name: Create Pull Request
@@ -200,4 +207,4 @@ jobs:
 
           labels: |
             moodle-core
-            ${{ steps.merge.outputs.workflow_changed == 'true' && 'upstream-workflow-change' || '' }}
+            ${{ steps.labels.outputs.extra_label }}
