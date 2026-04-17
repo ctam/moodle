@@ -124,8 +124,8 @@ jobs:
         run: |
           TAG=${{ steps.latest_tag.outputs.latest_tag }}
           git merge $TAG --no-edit
-        # Prevent upstream from modifying your workflows
-        git checkout HEAD -- .github/workflows
+          # Prevent upstream from modifying your workflows
+          git checkout HEAD -- .github/workflows
 
       - name: Merge tag into working tree
         if: steps.check.outputs.already_merged == 'false'
