@@ -121,59 +121,53 @@ jobs:
 
       - name: Merge tag into working tree
         if: steps.check.outputs.already_merged == 'false'
-        run: |
-          TAG=${{ steps.latest_tag.outputs.latest_tag }}
-          git merge $TAG --no-edit
-          # Prevent upstream from modifying your workflows
-          git checkout HEAD -- .github/workflows
-
-      - name: Merge tag into working tree
-        if: steps.check.outputs.already_merged == 'false'
         id: merge
         run: |
           TAG=${{ steps.latest_tag.outputs.latest_tag }}
-
+      
           git merge $TAG --no-edit
-
+      
           # Detect if workflows changed
           if git diff --name-only HEAD~1 HEAD | grep -q "^.github/workflows/"; then
             echo "workflow_changed=true" >> $GITHUB_OUTPUT
           else
             echo "workflow_changed=false" >> $GITHUB_OUTPUT
           fi
-
+      
           # Revert workflow changes
           git checkout HEAD -- .github/workflows
-
-        - name: Build workflow warning message
-          id: workflow_msg
-          run: |
-            if [ "${{ steps.merge.outputs.workflow_changed }}" = "true" ]; then
-              cat <<EOF >> $GITHUB_OUTPUT
-        message=---
-        ⚠️ **Workflow Changes Detected (Ignored)**
-        
-        Upstream changes to \`.github/workflows/\` were detected and intentionally **NOT merged**.
-        
-        If you want to review them:
-        
-        \`\`\`bash
-        git fetch upstream
-        git checkout ${{ steps.latest_tag.outputs.latest_tag }}
-        git diff HEAD .github/workflows
-        \`\`\`
-        
-        To merge them manually:
-        
-        \`\`\`bash
-        git checkout ${{ env.TARGET_BRANCH }}
-        git merge ${{ steps.latest_tag.outputs.latest_tag }}
-        \`\`\`
-        EOF
-            else
-              echo "message=" >> $GITHUB_OUTPUT
-            fi
     
+      - name: Build workflow warning message
+        id: workflow_msg
+        run: |
+          if [ "${{ steps.merge.outputs.workflow_changed }}" = "true" ]; then
+            {
+              echo "message<<EOF"
+              echo "---"
+              echo "⚠️ **Workflow Changes Detected (Ignored)**"
+              echo ""
+              echo "Upstream changes to \`.github/workflows/\` were detected and intentionally **NOT merged**."
+              echo ""
+              echo "If you want to review them:"
+              echo ""
+              echo "\`\`\`bash"
+              echo "git fetch upstream"
+              echo "git checkout ${{ steps.latest_tag.outputs.latest_tag }}"
+              echo "git diff HEAD .github/workflows"
+              echo "\`\`\`"
+              echo ""
+              echo "To merge them manually:"
+              echo ""
+              echo "\`\`\`bash"
+              echo "git checkout ${{ env.TARGET_BRANCH }}"
+              echo "git merge ${{ steps.latest_tag.outputs.latest_tag }}"
+              echo "\`\`\`"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "message=" >> $GITHUB_OUTPUT
+          fi
+          
       - name: Create Pull Request
         if: steps.check.outputs.already_merged == 'false'
         uses: peter-evans/create-pull-request@v7
