@@ -1,0 +1,254 @@
+name: Merge Latest Moodle Upstream Tag and Create Update PR (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      upstream_branch:
+        required: true
+        type: string
+      target_branch:
+        required: true
+        type: string
+      assignees:
+        required: false
+        type: string
+      reviewers:
+        required: false
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      upstream_branch:
+        description: "Upstream Moodle branch (e.g. MOODLE_405_STABLE)"
+        required: true
+        type: string
+
+      target_branch:
+        description: "Target repository branch to update"
+        required: true
+        type: string
+
+      assignees:
+        description: "Comma-separated GitHub usernames"
+        required: false
+        type: string
+
+      reviewers:
+        description: "Comma-separated GitHub usernames or team"
+        required: false
+        type: string
+
+jobs:
+  sync:
+    name: Merge upstream Moodle minor release
+    runs-on: ubuntu-latest
+
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      UPSTREAM_BRANCH: ${{ inputs.upstream_branch }}
+      TARGET_BRANCH: ${{ inputs.target_branch }}
+
+    steps:
+      # ------------------------------------------------------------
+      # Debug context
+      # ------------------------------------------------------------
+      - name: Debug inputs
+        run: |
+          echo "UPSTREAM_BRANCH=$UPSTREAM_BRANCH"
+          echo "TARGET_BRANCH=$TARGET_BRANCH"
+          echo "GITHUB_EVENT_NAME=$GITHUB_EVENT_NAME"
+
+      # ------------------------------------------------------------
+      # Checkout target branch
+      # ------------------------------------------------------------
+      - name: Checkout target branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ env.TARGET_BRANCH }}
+
+      # ------------------------------------------------------------
+      # Git identity for commits
+      # ------------------------------------------------------------
+      - name: Configure git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # ------------------------------------------------------------
+      # Add upstream Moodle repo
+      # ------------------------------------------------------------
+      - name: Add upstream + fetch
+        run: |
+          git remote add upstream https://github.com/moodle/moodle.git || true
+          git fetch upstream --tags
+          git fetch upstream "+refs/heads/*:refs/remotes/upstream/*"
+
+      # ------------------------------------------------------------
+      # Derive version prefix from upstream branch
+      # ------------------------------------------------------------
+      - name: Derive version prefix
+        id: version
+        run: |
+          RAW=$(echo "$UPSTREAM_BRANCH" | sed -E 's/MOODLE_([0-9]{3})_STABLE/\1/')
+          MAJOR=$(echo "$RAW" | cut -c1)
+          MINOR=$(echo "$RAW" | cut -c2-3 | sed 's/^0//')
+
+          PREFIX="v${MAJOR}.${MINOR}."
+          echo "prefix=$PREFIX" >> $GITHUB_OUTPUT
+
+      # ------------------------------------------------------------
+      # Find latest matching upstream tag
+      # ------------------------------------------------------------
+      - name: Find latest valid tag
+        id: latest_tag
+        run: |
+          PREFIX=${{ steps.version.outputs.prefix }}
+
+          TAG=$(git tag \
+            --list "${PREFIX}*" \
+            --merged upstream/$UPSTREAM_BRANCH \
+            --sort=-v:refname | head -n 1)
+
+          if [ -z "$TAG" ]; then
+            echo "No matching tag found for prefix $PREFIX"
+            exit 1
+          fi
+
+          echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Found latest tag: $TAG"
+
+      # ------------------------------------------------------------
+      # Verify tag is actually part of upstream branch
+      # ------------------------------------------------------------
+      - name: Verify tag ancestry
+        run: |
+          TAG=${{ steps.latest_tag.outputs.latest_tag }}
+          git merge-base --is-ancestor "$TAG" "upstream/$UPSTREAM_BRANCH"
+
+      # ------------------------------------------------------------
+      # Check if already merged into target branch
+      # ------------------------------------------------------------
+      - name: Check if already merged
+        id: check
+        run: |
+          git checkout $TARGET_BRANCH
+
+          TAG=${{ steps.latest_tag.outputs.latest_tag }}
+
+          if git merge-base --is-ancestor "$TAG" HEAD; then
+            echo "already_merged=true" >> $GITHUB_OUTPUT
+            echo "Already up to date"
+          else
+            echo "already_merged=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ------------------------------------------------------------
+      # Get current version in target branch
+      # ------------------------------------------------------------
+      - name: Get current merged version
+        id: current_tag
+        run: |
+          PREFIX=${{ steps.version.outputs.prefix }}
+
+          CURRENT=$(git tag \
+            --merged HEAD \
+            --list "${PREFIX}*" \
+            --sort=-v:refname | head -n 1)
+
+          echo "current_tag=${CURRENT:-none}" >> $GITHUB_OUTPUT
+
+      # ------------------------------------------------------------
+      # Clean working tree before merge
+      # ------------------------------------------------------------
+      - name: Reset working tree
+        run: |
+          git checkout $TARGET_BRANCH
+          git reset --hard
+          git clean -fd
+
+      # ------------------------------------------------------------
+      # Merge upstream tag
+      # ------------------------------------------------------------
+      - name: Merge upstream tag
+        if: steps.check.outputs.already_merged == 'false'
+        id: merge
+        run: |
+          TAG=${{ steps.latest_tag.outputs.latest_tag }}
+
+          git merge "$TAG" --no-edit || {
+            echo "Merge conflict detected"
+            exit 1
+          }
+
+          # Detect workflow changes
+          if git diff --name-only ORIG_HEAD HEAD | grep -q "^.github/workflows/"; then
+            echo "workflow_changed=true" >> $GITHUB_OUTPUT
+
+            git checkout ORIG_HEAD -- .github/workflows
+            git add .github/workflows
+            git commit -m "Revert upstream workflow changes"
+          else
+            echo "workflow_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ------------------------------------------------------------
+      # Build PR warning message
+      # ------------------------------------------------------------
+      - name: Build workflow warning message
+        id: workflow_msg
+        run: |
+          if [ "${{ steps.merge.outputs.workflow_changed }}" = "true" ]; then
+            {
+              echo "message<<EOF"
+              echo "⚠️ Workflow changes detected and were not applied"
+              echo ""
+              echo "Upstream modifications in .github/workflows/ were reverted automatically."
+              echo "Review manually if needed."
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "message=" >> $GITHUB_OUTPUT
+          fi
+
+      # ------------------------------------------------------------
+      # Compute PR labels
+      # ------------------------------------------------------------
+      - name: Set labels
+        id: labels
+        run: |
+          if [ "${{ steps.merge.outputs.workflow_changed }}" = "true" ]; then
+            echo "labels=moodle-core,upstream-workflow-change" >> $GITHUB_OUTPUT
+          else
+            echo "labels=moodle-core" >> $GITHUB_OUTPUT
+          fi
+
+      # ------------------------------------------------------------
+      # Create Pull Request
+      # ------------------------------------------------------------
+      - name: Create Pull Request
+        if: steps.check.outputs.already_merged == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: moodle-upstream-${{ steps.latest_tag.outputs.latest_tag }}-${{ env.TARGET_BRANCH }}
+          base: ${{ env.TARGET_BRANCH }}
+
+          title: >
+            Update to Moodle ${{ steps.latest_tag.outputs.latest_tag }}
+
+          body: |
+            Automated Moodle upgrade
+
+            From: ${{ steps.current_tag.outputs.current_tag }}
+            To: ${{ steps.latest_tag.outputs.latest_tag }}
+            Upstream branch: ${{ env.UPSTREAM_BRANCH }}
+
+            ${{ steps.workflow_msg.outputs.message }}
+
+          commit-message: |
+            Update Moodle to ${{ steps.latest_tag.outputs.latest_tag }}
+
+          assignees: ${{ inputs.assignees }}
+          reviewers: ${{ inputs.reviewers }}
+
+          labels: ${{ steps.labels.outputs.labels }}

@@ -1,0 +1,40 @@
+name: Scheduled Moodle Upstream Tag Merge and Moodle Update PRs
+
+on:
+  schedule:
+    - cron: "0 * * * *"  # hourly run
+  workflow_dispatch: {}  # optional manual trigger for the matrix itself (can remove if you truly want schedule-only)
+
+jobs:
+  sync:
+    # name: >
+    #   Moodle ${{ env.MOODLE_VERSION }} Sync:
+    #   ${{ env.UPSTREAM_BRANCH }} → ${{ env.TARGET_BRANCH }}
+    # name: Sync ${{ matrix.version }} → ${{ matrix.target }}
+    # name: Update ${{ matrix.target }} from ${{ matrix.upstream }}
+    name: Update ${{ matrix.target }} to latest upstream ${{ matrix.version }}.x release from ${{ matrix.upstream }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: "Moodle 4.5"
+            upstream: MOODLE_405_STABLE
+            target: UCSFCLE_405_STABLE
+            assignees: ctam
+            reviewers: ucsf-education/moodlecodereviewers
+
+          # Example for future expansion
+          # - version: "Moodle 5.1"
+          #   upstream: MOODLE_501_STABLE
+          #   target: UCSFCLE_501_STABLE
+          #   assignees: ctam
+          #   reviewers: ucsf-education/moodlecodereviewers
+
+    uses: ./.github/workflows/merge-latest-upstream-tag-reusable.yml
+
+    with:
+      upstream_branch: ${{ matrix.upstream }}
+      target_branch: ${{ matrix.target }}
+      assignees: ${{ matrix.assignees }}
+      reviewers: ${{ matrix.reviewers }}
