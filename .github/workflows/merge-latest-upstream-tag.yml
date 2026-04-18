@@ -99,6 +99,7 @@ jobs:
       # ------------------------------------------------------------
       - name: Configure git identity
         run: |
+          # GitHub Actions bot identity
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -123,6 +124,7 @@ jobs:
 
           PREFIX="v${MAJOR}.${MINOR}."
           echo "prefix=$PREFIX" >> $GITHUB_OUTPUT
+          echo "Using tag prefix: $PREFIX"
 
       # ------------------------------------------------------------
       # Find latest matching upstream tag
@@ -208,10 +210,11 @@ jobs:
             exit 1
           }
 
-          # Detect workflow changes
+          # Detect workflow changes introduced by upstream
           if git diff --name-only ORIG_HEAD HEAD | grep -q "^.github/workflows/"; then
             echo "workflow_changed=true" >> $GITHUB_OUTPUT
 
+            # Revert workflow changes to avoid GitHub permission issues
             git checkout ORIG_HEAD -- .github/workflows
             git add .github/workflows
             git commit -m "Revert upstream workflow changes"
@@ -228,10 +231,22 @@ jobs:
           if [ "${{ steps.merge.outputs.workflow_changed }}" = "true" ]; then
             {
               echo "message<<EOF"
-              echo "⚠️ Workflow changes detected and were not applied"
+              echo "---"
+              echo "⚠️ **Workflow Changes Detected (Ignored)**"
               echo ""
-              echo "Upstream modifications in .github/workflows/ were reverted automatically."
-              echo "Review manually if needed."
+              echo "Upstream changes to \`.github/workflows/\` were NOT merged."
+              echo ""
+              echo "Review changes:"
+              echo "\`\`\`bash"
+              echo "git fetch upstream"
+              echo "git diff ${{ env.TARGET_BRANCH }} ${{ steps.latest_tag.outputs.latest_tag }} -- .github/workflows"
+              echo "\`\`\`"
+              echo ""
+              echo "Merge manually if needed:"
+              echo "\`\`\`bash"
+              echo "git checkout ${{ env.TARGET_BRANCH }}"
+              echo "git merge ${{ steps.latest_tag.outputs.latest_tag }}"
+              echo "\`\`\`"
               echo "EOF"
             } >> $GITHUB_OUTPUT
           else
@@ -257,18 +272,19 @@ jobs:
         if: steps.check.outputs.already_merged == 'false'
         uses: peter-evans/create-pull-request@v8
         with:
-          branch: moodle-upstream-${{ steps.latest_tag.outputs.latest_tag }}-${{ env.TARGET_BRANCH }}
+          branch: ${{ env.TARGET_BRANCH }}/Merge-Moodle-${{ steps.latest_tag.outputs.latest_tag }}
           base: ${{ env.TARGET_BRANCH }}
           add-paths: .
           title: >
             Update to Moodle ${{ steps.latest_tag.outputs.latest_tag }}
+            from ${{ steps.current_tag.outputs.current_tag }}
 
           body: |
             Automated Moodle upgrade
 
-            From: ${{ steps.current_tag.outputs.current_tag }}
-            To: ${{ steps.latest_tag.outputs.latest_tag }}
-            Upstream branch: ${{ env.UPSTREAM_BRANCH }}
+            **From:** `${{ steps.current_tag.outputs.current_tag }}`
+            **To:** `${{ steps.latest_tag.outputs.latest_tag }}`
+            **Upstream branch:** `${{ env.UPSTREAM_BRANCH }}`
 
             ${{ steps.workflow_msg.outputs.message }}
 
