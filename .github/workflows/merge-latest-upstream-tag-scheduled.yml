@@ -31,7 +31,7 @@ jobs:
           #   assignees: ctam
           #   reviewers: ucsf-education/moodlecodereviewers
 
-    uses: ./.github/workflows/merge-latest-upstream-tag-reusable.yml
+    uses: ./.github/workflows/merge-latest-upstream-tag.yml
 
     with:
       upstream_branch: ${{ matrix.upstream }}
