@@ -1,9 +1,9 @@
-name: Scheduled Moodle Upstream Tag Merge and Moodle Update PRs
+name: Scheduled Merge Latest Moodle Upstream Tag and Create Update PRs
 
 on:
   schedule:
     - cron: "0 * * * *"  # hourly run
-  workflow_dispatch: {}  # optional manual trigger for the matrix itself (can remove if you truly want schedule-only)
+  # workflow_dispatch: {}  # optional manual trigger for the matrix itself (can remove if you truly want schedule-only)
 
 jobs:
   sync:
