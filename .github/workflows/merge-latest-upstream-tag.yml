@@ -33,9 +33,6 @@ jobs:
     name: Merge upstream Moodle minor release
     runs-on: ubuntu-latest
 
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
     steps:
       # ------------------------------------------------------------
       # Derive branches (manual mode) OR use inputs (workflow_call)
@@ -258,11 +255,11 @@ jobs:
       # ------------------------------------------------------------
       - name: Create Pull Request
         if: steps.check.outputs.already_merged == 'false'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: moodle-upstream-${{ steps.latest_tag.outputs.latest_tag }}-${{ env.TARGET_BRANCH }}
           base: ${{ env.TARGET_BRANCH }}
-
+          add-paths: .
           title: >
             Update to Moodle ${{ steps.latest_tag.outputs.latest_tag }}
 
