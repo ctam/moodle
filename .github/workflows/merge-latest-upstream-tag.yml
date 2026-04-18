@@ -232,7 +232,7 @@ jobs:
             {
               echo "message<<EOF"
               echo "---"
-              echo "⚠️ **Workflow Changes Detected (Ignored)**"
+              echo "⚠️ **Workflow changes detected and were not applied**"
               echo ""
               echo "Upstream changes to \`.github/workflows/\` were NOT merged."
               echo ""
@@ -272,7 +272,7 @@ jobs:
         if: steps.check.outputs.already_merged == 'false'
         uses: peter-evans/create-pull-request@v8
         with:
-          branch: ${{ env.TARGET_BRANCH }}/Merge-Moodle-${{ steps.latest_tag.outputs.latest_tag }}
+          branch: Merge-Moodle-${{ steps.latest_tag.outputs.latest_tag }}
           base: ${{ env.TARGET_BRANCH }}
           add-paths: .
           title: >
