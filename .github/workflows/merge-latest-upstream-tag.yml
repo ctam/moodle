@@ -204,21 +204,39 @@ jobs:
         id: merge
         run: |
           TAG=${{ steps.latest_tag.outputs.latest_tag }}
-
-          git merge "$TAG" --no-ff --no-edit || {
-            echo "Merge conflict detected"
-            exit 1
-          }
-
-          # Detect workflow changes introduced by upstream
-          if git diff --name-only ORIG_HEAD...HEAD | grep -q "^.github/workflows/"; then
+      
+          # Attempt merge but DO NOT exit on conflict
+          set +e
+          git merge "$TAG" --no-ff --no-edit
+          MERGE_EXIT_CODE=$?
+          set -e
+      
+          # Detect if workflows were touched (even in conflict)
+          if git diff --name-only ORIG_HEAD...$TAG | grep -q "^.github/workflows/"; then
             echo "workflow_changed=true" >> $GITHUB_OUTPUT
-
-            # Revert workflow changes to avoid GitHub permission issues
+      
+            # Always restore workflows from pre-merge state
             git restore --source=ORIG_HEAD --staged --worktree .github/workflows
-            git commit -m "Revert upstream workflow changes"
           else
             echo "workflow_changed=false" >> $GITHUB_OUTPUT
+          fi
+      
+          # If merge had conflicts, try to resolve automatically
+          if [ $MERGE_EXIT_CODE -ne 0 ]; then
+            echo "Merge had conflicts, attempting auto-resolution..."
+      
+            # Add all files (after restoring workflows)
+            git add -A
+      
+            # Check if any unresolved conflicts remain
+            if git diff --name-only --diff-filter=U | grep -v "^.github/workflows/" | grep -q .; then
+              echo "❌ Conflicts remain outside .github/workflows"
+              git diff --name-only --diff-filter=U
+              exit 1
+            fi
+      
+            # Commit merge after resolving workflow conflicts
+            git commit -m "Merge $TAG (auto-resolved workflow conflicts)"
           fi
 
       # ------------------------------------------------------------
