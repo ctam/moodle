@@ -1,10 +1,11 @@
 name: Moodle Plugin CI
 
-on: [push, pull_request]
+on: [workflow_call]
 
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    # Ubuntu 24.04.4 is our production version
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -17,12 +18,12 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
 
       mariadb:
-        image: mariadb:10
+        # We use MariaDB 11 as our production version
+        image: mariadb:11
         env:
-          MYSQL_USER: 'root'
-          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
-          MYSQL_CHARACTER_SET_SERVER: "utf8mb4"
-          MYSQL_COLLATION_SERVER: "utf8mb4_unicode_ci"
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+          MARIADB_CHARACTER_SET_SERVER: "utf8mb4"
+          MARIADB_COLLATION_SERVER: "utf8mb4_unicode_ci"
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval 10s --health-timeout 5s --health-retries 3
@@ -30,8 +31,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.0', '8.1']
-        moodle-branch: ['MOODLE_401_STABLE']
+        # We use PHP 8.3 as our production version.
+        php: ['8.3']
+        # We are on MOODLE_501_STABLE.
+        moodle-branch: ['MOODLE_501_STABLE']
         database: [pgsql, mariadb]
 
     steps:
