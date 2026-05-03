@@ -1,6 +1,31 @@
 name: Moodle Plugin CI
 
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      skip_steps:
+        description: >
+          Comma-separated list of steps to skip.
+
+          Available step keys:
+            - phplint     → PHP Lint
+            - phpmd       → PHP Mess Detector
+            - phpcs       → Moodle Code Checker
+            - phpdoc      → Moodle PHPDoc Checker
+            - mustache    → Mustache Lint
+            - grunt       → Grunt
+            - phpunit     → PHPUnit tests
+            - behat       → Behat features
+
+          Example:
+            skip_steps: "phpmd,behat,grunt"
+
+          Notes:
+            - No spaces (use "phpmd,behat", not "phpmd, behat")
+            - Matching is exact (safe against partial matches)
+        required: false
+        type: string
+        default: ""
 
 jobs:
   test:
@@ -70,20 +95,20 @@ jobs:
           # MOODLE_APP: 'true'
 
       - name: PHP Lint
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !contains(format(',{0},', inputs.skip_steps), ',phplint,') }}
         run: moodle-plugin-ci phplint
 
       - name: PHP Mess Detector
         continue-on-error: true # This step will show errors but will not fail
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !contains(format(',{0},', inputs.skip_steps), ',phpmd,') }}
         run: moodle-plugin-ci phpmd
 
       - name: Moodle Code Checker
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !contains(format(',{0},', inputs.skip_steps), ',phpcs,') }}
         run: moodle-plugin-ci phpcs --max-warnings 0
 
       - name: Moodle PHPDoc Checker
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !contains(format(',{0},', inputs.skip_steps), ',phpdoc,') }}
         run: moodle-plugin-ci phpdoc --max-warnings 0
 
       - name: Validating
@@ -95,24 +120,24 @@ jobs:
         run: moodle-plugin-ci savepoints
 
       - name: Mustache Lint
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !contains(format(',{0},', inputs.skip_steps), ',mustache,') }}
         run: moodle-plugin-ci mustache
 
       - name: Grunt
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !contains(format(',{0},', inputs.skip_steps), ',grunt,') }}
         run: moodle-plugin-ci grunt --max-lint-warnings 0
 
       - name: PHPUnit tests
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !contains(format(',{0},', inputs.skip_steps), ',phpunit,') }}
         run: moodle-plugin-ci phpunit --fail-on-warning
 
       - name: Behat features
         id: behat
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !contains(format(',{0},', inputs.skip_steps), ',behat,') }}
         run: moodle-plugin-ci behat --profile chrome --scss-deprecations
 
       - name: Upload Behat Faildump
-        if: ${{ failure() && steps.behat.outcome == 'failure' }}
+        if: ${{ failure() && !contains(format(',{0},', inputs.skip_steps), ',behat,') && steps.behat.outcome == 'failure' }}
         uses: actions/upload-artifact@v4
         with:
           name: Behat Faildump (${{ join(matrix.*, ', ') }})
