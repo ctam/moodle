@@ -283,9 +283,10 @@ class humandate implements externable, renderable, templatable {
         if ($this->near === null) {
             return false;
         }
-        $due = $this->datetime->diff($this->clock->now());
-        $intervalseconds = $this->interval_to_seconds($due);
-        return $intervalseconds < $this->near && $intervalseconds > 0;
+        $now = $this->clock->now()->getTimestamp();
+        $target = $this->datetime->getTimestamp();
+        $diff = $target - $now;
+        return $diff > 0 && $diff < $this->near;
     }
 
     /**
@@ -297,18 +298,6 @@ class humandate implements externable, renderable, templatable {
         $currentyear = $this->clock->now()->format('Y');
         $datetimeyear = $this->datetime->format('Y');
         return $currentyear === $datetimeyear;
-    }
-
-    /**
-     * Converts a DateInterval object to total seconds.
-     *
-     * @param \DateInterval $interval The interval to convert.
-     * @return int The total number of seconds.
-     */
-    private function interval_to_seconds(DateInterval $interval): int {
-        $reference = new DateTimeImmutable();
-        $entime = $reference->add($interval);
-        return $reference->getTimestamp() - $entime->getTimestamp();
     }
 
     /**
