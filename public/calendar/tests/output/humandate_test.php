@@ -279,6 +279,107 @@ final class humandate_test extends \advanced_testcase {
     }
 
     /**
+     * Test get_near_icon method.
+     *
+     * This test checks that past should NOT be 'near'.
+     */
+    public function test_get_near_icon_past_time(): void {
+        $this->resetAfterTest();
+
+        $clock = $this->mock_clock_with_frozen();
+
+        // 1 hour in the past.
+        $timestamp = $clock->time() - HOURSECS;
+        $humandate = humandate::create_from_timestamp($timestamp);
+        $icon = $humandate->get_near_icon();
+
+        $this->assertNull($icon, 'Past timestamps should not be considered near');
+    }
+
+    /**
+     * Test get_near_icon method.
+     *
+     * This test clarifies intended behaviour when exactly at the boundary.
+     * Avoid off-by-one ambiguity.
+     */
+    public function test_get_near_icon_exact_boundary(): void {
+        $this->resetAfterTest();
+
+        $clock = $this->mock_clock_with_frozen();
+
+        // Exactly at threshold.
+        $timestamp = $clock->time() + DAYSECS;
+        $humandate = humandate::create_from_timestamp($timestamp);
+        $icon = $humandate->get_near_icon();
+
+        // Current implementation uses "<", so this should be false.
+        $this->assertNull($icon, 'Exactly at threshold should not be considered near');
+    }
+
+    /**
+     * Test get_near_icon method.
+     *
+     * This test chceks just inside vs just outside boundary.
+     */
+    public function test_get_near_icon_boundary_edges(): void {
+        $this->resetAfterTest();
+
+        $clock = $this->mock_clock_with_frozen();
+
+        // Just inside (should be near).
+        $timestamp = $clock->time() + DAYSECS - 1;
+        $humandate = humandate::create_from_timestamp($timestamp);
+        $this->assertInstanceOf(\core\output\pix_icon::class, $humandate->get_near_icon());
+
+        // Just outside (should NOT be near).
+        $timestamp = $clock->time() + DAYSECS + 1;
+        $humandate = humandate::create_from_timestamp($timestamp);
+        $this->assertNull($humandate->get_near_icon());
+    }
+
+    /**
+     * Test get_near_icon method.
+     *
+     * This test check for month boundary regression.
+     */
+    public function test_get_near_icon_across_month_boundary(): void {
+        $this->resetAfterTest();
+
+        // Freeze time at May 1, 2026 06:00:00 UTC (or any stable value).
+        $clock = $this->mock_clock_with_frozen(strtotime('2026-05-01 06:00:00'));
+
+        // Target is ~7 hours earlier (previous month).
+        $timestamp = strtotime('2026-04-30 23:00:00');
+
+        $humandate = humandate::create_from_timestamp($timestamp);
+        $icon = $humandate->get_near_icon();
+
+        // This MUST be false (past), regardless of month boundary.
+        $this->assertNull($icon, 'Past timestamp across month boundary should not be near');
+    }
+
+    /**
+     * Test get_near_icon method.
+     *
+    * This test makes sure 'future near' still works across months.
+    */
+    public function test_get_near_icon_future_across_month_boundary(): void {
+        $this->resetAfterTest();
+
+        // Freeze at April 30 near midnight.
+        $clock = $this->mock_clock_with_frozen(strtotime('2026-04-30 23:30:00'));
+
+        // +1 hour → May 1
+        $timestamp = $clock->time() + HOURSECS;
+
+        $humandate = humandate::create_from_timestamp($timestamp);
+        $icon = $humandate->get_near_icon();
+
+        $this->assertInstanceOf(\core\output\pix_icon::class, $icon,
+            'Future timestamp across month boundary should be near');
+    }
+
+    /**
      * Test the exportable interface implementation.
      */
     public function test_get_exporter(): void {
