@@ -12,8 +12,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  enforce-submodule-tags:
-    # Only run for Dependabot PRs
+  align-submodule-tags:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
 
@@ -42,11 +41,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      ######################################################################
-      # Install GitHub CLI.
-      #
-      # We use gh to close PRs cleanly when no update is needed.
-      ######################################################################
       - name: Install GitHub CLI
         run: |
           sudo apt-get update
@@ -65,7 +59,7 @@ jobs:
       #    - updates only .gitmodules
       #    - or rewrites the submodule commit to the latest tag commit
       ######################################################################
-      - name: Enforce submodule tag policy
+      - name: Align submodule tags
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -75,53 +69,46 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
 
-            set -euo pipefail
+          set -euo pipefail
 
-            echo "========================================================"
-            echo "Detecting changed submodules in PR"
-            echo "========================================================"
+          ####################################################################
+          # Cleanup safety: always remove temp dir even on failure/exit
+          ####################################################################
+          TEMP_DIR=""
+          trap '[[ -n "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"' EXIT
 
-            # Find submodules whose gitlink changed in this PR
-            #
-            # git diff output format for submodules:
-            # 160000 <oldsha> <newsha> M path/to/submodule
-            #
-            CHANGED_SUBMODULES=$(git diff --submodule=short "$BASE_SHA" "$HEAD_SHA" | \
-                grep '^Submodule ' | awk '{print $2}')
+          echo "========================================================"
+          echo "Detecting changed submodules in PR"
+          echo "========================================================"
 
-            if [ -z "$CHANGED_SUBMODULES" ]; then
-                echo "No changed submodules detected."
-                exit 0
-            fi
+          ####################################################################
+          # Detect submodule changes in this PR
+          ####################################################################
+          CHANGED_SUBMODULES=$(git diff --submodule=short "$BASE_SHA" "$HEAD_SHA" \
+            | grep '^Submodule ' | awk '{print $2}')
 
-            echo "Changed submodules:"
-            echo "$CHANGED_SUBMODULES"
+          if [ -z "$CHANGED_SUBMODULES" ]; then
+            echo "No changed submodules detected."
+            exit 0
+          fi
 
-            ##################################################################
-            # Dependabot should create PRs containing only a single submodule
-            # update.
-            #
-            # If multiple submodules are modified in the same PR, this workflow
-            # does not know how to safely rewrite the PR title, comments, and
-            # branch contents deterministically.
-            #
-            # In that situation:
-            # - comment on the PR
-            # - fail the workflow
-            # - leave the PR untouched for manual review
-            ##################################################################
-            SUBMODULE_COUNT=$(echo "$CHANGED_SUBMODULES" | wc -w)
+          echo "Changed submodules:"
+          echo "$CHANGED_SUBMODULES"
 
-            if [ "$SUBMODULE_COUNT" -gt 1 ]; then
+          ####################################################################
+          # Enforce strict single-submodule rule
+          ####################################################################
+          SUBMODULE_COUNT=$(echo "$CHANGED_SUBMODULES" | wc -w)
 
-            echo "ERROR: Multiple submodule updates detected in one PR."
+          if [ "$SUBMODULE_COUNT" -gt 1 ]; then
+
+            echo "ERROR: Multiple submodules detected."
 
             gh pr comment "$PR_NUMBER" \
-                --repo "$REPO" \
-                --body "$(cat <<EOF
-            Workflow \"$GITHUB_WORKFLOW\" expected exactly one submodule update in this Dependabot PR, but detected multiple updated submodules.
+              --repo "$REPO" \
+              --body "$(cat <<EOF
+            Workflow "$GITHUB_WORKFLOW" expected exactly one submodule update in this Dependabot PR, but found multiple:
 
-            Updated submodules:
             \`\`\`
             $CHANGED_SUBMODULES
             \`\`\`
@@ -129,245 +116,152 @@ jobs:
             This PR was left unchanged for manual review.
             EOF
             )"
-
             exit 1
-            fi
+          fi
 
-            ##################################################################
-            # Use the first (and expected only) changed submodule.
-            ##################################################################
-            SUBMODULE_PATH=$(echo "$CHANGED_SUBMODULES" | head -n1)
+          ####################################################################
+          # Single submodule assumption
+          ####################################################################
+          SUBMODULE_PATH=$(echo "$CHANGED_SUBMODULES" | head -n1)
 
-            SHOULD_FORCE_PUSH=false
-            SHOULD_COMMIT=false
+          echo "Processing submodule: $SUBMODULE_PATH"
 
-            echo ""
-            echo "========================================================"
-            echo "Processing submodule: $SUBMODULE_PATH"
-            echo "========================================================"
+          ####################################################################
+          # Read submodule metadata
+          ####################################################################
+          SUBMODULE_URL=$(git config -f .gitmodules --get "submodule.${SUBMODULE_PATH}.url" || true)
+          SUBMODULE_BRANCH=$(git config -f .gitmodules --get "submodule.${SUBMODULE_PATH}.branch" || true)
+          SUBMODULE_TAG=$(git config -f .gitmodules --get "submodule.${SUBMODULE_PATH}.tag" || true)
 
-            ################################################################
-            # Read values from .gitmodules
-            ################################################################
+          echo "URL:    $SUBMODULE_URL"
+          echo "Branch: $SUBMODULE_BRANCH"
+          echo "Tag:    ${SUBMODULE_TAG:-<none>}"
 
-            SUBMODULE_URL=$(git config -f .gitmodules --get "submodule.${SUBMODULE_PATH}.url" || true)
-            SUBMODULE_BRANCH=$(git config -f .gitmodules --get "submodule.${SUBMODULE_PATH}.branch" || true)
-            SUBMODULE_TAG=$(git config -f .gitmodules --get "submodule.${SUBMODULE_PATH}.tag" || true)
+          if [ -z "$SUBMODULE_URL" ]; then
+            echo "ERROR: Missing submodule URL"
+            exit 1
+          fi
 
-            echo "URL:    $SUBMODULE_URL"
-            echo "Branch: $SUBMODULE_BRANCH"
-            echo "Tag:    ${SUBMODULE_TAG:-<none>}"
+          ####################################################################
+          # Fetch submodule repository metadata
+          ####################################################################
+          TEMP_DIR=$(mktemp -d)
 
-            ################################################################
-            # If there is no tag property, do nothing.
-            ################################################################
-            if [ -z "${SUBMODULE_TAG}" ]; then
-              echo "No tag property found. Leaving Dependabot PR untouched."
-              exit 0
-            fi
+          git clone --quiet --no-checkout "$SUBMODULE_URL" "$TEMP_DIR"
+          pushd "$TEMP_DIR" > /dev/null
 
-            ################################################################
-            # Fetch all refs from the submodule repository.
-            #
-            # We clone into a temp directory because we need to inspect:
-            # - branch heads
-            # - tags
-            # - tag commits
-            ################################################################
-            TEMP_DIR=$(mktemp -d)
+          git fetch --all --tags --force
 
-            git clone --quiet --no-checkout "$SUBMODULE_URL" "$TEMP_DIR"
+          REACHABLE_TAGS=$(git tag --merged "origin/${SUBMODULE_BRANCH}" --sort=-v:refname)
 
-            pushd "$TEMP_DIR" > /dev/null
-
-            git fetch --all --tags --force
-
-            ################################################################
-            # Find the latest tag reachable from the configured branch.
-            #
-            # Strategy:
-            #   git tag --merged origin/<branch>
-            #
-            # This returns tags reachable from that branch.
-            #
-            # Then sort naturally using version sort.
-            ################################################################
-            REACHABLE_TAGS=$(git tag --merged "origin/${SUBMODULE_BRANCH}" --sort=-v:refname)
-
-            if [ -z "$REACHABLE_TAGS" ]; then
-              echo "No tags reachable from branch ${SUBMODULE_BRANCH}"
-              popd > /dev/null
-              rm -rf "$TEMP_DIR"
-              exit 0
-            fi
-
-            LATEST_TAG=$(echo "$REACHABLE_TAGS" | head -n1)
-
-            echo "Latest reachable tag: $LATEST_TAG"
-
-            ################################################################
-            # Resolve the commit hash for the latest tag.
-            ################################################################
-            LATEST_TAG_COMMIT=$(git rev-list -n 1 "$LATEST_TAG")
-
-            echo "Latest tag commit: $LATEST_TAG_COMMIT"
-
+          if [ -z "$REACHABLE_TAGS" ]; then
+            echo "No reachable tags for branch ${SUBMODULE_BRANCH}"
             popd > /dev/null
+            exit 0
+          fi
 
-            ################################################################
-            # Determine the commit currently used in the PR for this submodule
-            ################################################################
-            CURRENT_SUBMODULE_COMMIT=$(git ls-tree HEAD "$SUBMODULE_PATH" | awk '{print $3}')
+          LATEST_TAG=$(echo "$REACHABLE_TAGS" | head -n1)
+          LATEST_TAG_COMMIT=$(git rev-list -n 1 "$LATEST_TAG")
 
-            echo "Current PR submodule commit: $CURRENT_SUBMODULE_COMMIT"
+          popd > /dev/null
 
-            ################################################################
-            # If .gitmodules already contains the latest tag AND the submodule
-            # commit equals that tag commit, then this Dependabot PR is
-            # unnecessary.
-            #
-            # Close the PR and ignore it.
-            ################################################################
-            if [ "$SUBMODULE_TAG" = "$LATEST_TAG" ]; then
+          echo "Latest reachable tag: $LATEST_TAG"
+          echo "Latest tag commit:    $LATEST_TAG_COMMIT"
 
-                echo "This submodule is already on the latest release tag."
-                echo "Closing unnecessary Dependabot PR."
+          ####################################################################
+          # Current PR submodule commit
+          ####################################################################
+          CURRENT_SUBMODULE_COMMIT=$(git ls-tree HEAD "$SUBMODULE_PATH" | awk '{print $3}')
 
-                gh pr comment "$PR_NUMBER" \
-                    --repo "$REPO" \
-                    --body "$(cat <<EOF
-                Closing this PR because the submodule is already pinned to the latest release tag (${LATEST_TAG}).
+          echo "Dependabot commit: $CURRENT_SUBMODULE_COMMIT"
 
-                @dependabot ignore this
-                EOF
-                )"
+          ####################################################################
+          # CASE 1: Submodule already pinned to latest release tag
+          ####################################################################
+          if [ "$SUBMODULE_TAG" = "$LATEST_TAG" ]; then
 
-                gh pr close "$PR_NUMBER" \
-                    --repo "$REPO"
+            echo "Submodule already at latest release tag. Closing PR."
 
-                exit 0
-            fi
-
-            ################################################################
-            # A newer release tag exists.
-            #
-            # Update the PR title so the PR reflects release tag upgrades
-            # instead of raw commit hashes.
-            ################################################################
-            NEW_PR_TITLE="Bump ${SUBMODULE_PATH} from ${SUBMODULE_TAG} to ${LATEST_TAG}"
-
-            echo "Updating PR title:"
-            echo "$NEW_PR_TITLE"
-
-            gh pr edit "$PR_NUMBER" \
-                --repo "$REPO" \
-                --title "$NEW_PR_TITLE"
-
-            ################################################################
-            # Update .gitmodules to use the newest tag.
-            ################################################################
-            echo "Updating .gitmodules tag -> $LATEST_TAG"
-
-            git config -f .gitmodules \
-              "submodule.${SUBMODULE_PATH}.tag" \
-              "$LATEST_TAG"
-
-            SHOULD_COMMIT=true
-
-            git add .gitmodules
-
-            ################################################################
-            # If Dependabot already updated the submodule to the same commit
-            # as the latest tag, then we only need to commit .gitmodules.
-            ################################################################
-            if [ "$CURRENT_SUBMODULE_COMMIT" = "$LATEST_TAG_COMMIT" ]; then
-                echo "Dependabot already matches the latest release tag commit."
-                echo "Only the .gitmodules tag value needs updating."
-                SHOULD_FORCE_PUSH=false
-            fi
-
-            ################################################################
-            # Otherwise:
-            #
-            # - checkout the latest tag commit in the submodule
-            # - update the gitlink in the parent repository
-            # - later we will force-push the rewritten branch
-            ################################################################
-            echo "Dependabot updated to a non-tag commit."
-            echo "Rewriting submodule to latest tag commit."
-
-            ################################################################
-            # Add a PR comment explaining why the workflow rewrote the
-            # Dependabot update.
-            ################################################################
             gh pr comment "$PR_NUMBER" \
-                --repo "$REPO" \
-                --body "$(cat <<EOF
-            Dependabot updated this submodule to the latest commit on the tracked branch.
+              --repo "$REPO" \
+              --body "$(cat <<EOF
+            Workflow "$GITHUB_WORKFLOW" closed this PR because the submodule is already pinned to the latest release tag:
 
-            Workflow \"$GITHUB_WORKFLOW\" rewrote the update to use the latest release tag reachable from \`${SUBMODULE_BRANCH}\`.
+            - Tag: \`$LATEST_TAG\`
 
-            Changes applied:
-            - previous tag: \`${SUBMODULE_TAG}\`
-            - new tag: \`${LATEST_TAG}\`
-            - dependabot target commit: \`${CURRENT_SUBMODULE_COMMIT}\`
-            - release tag commit: \`${LATEST_TAG_COMMIT}\`
+            @dependabot ignore this
             EOF
             )"
 
+            gh pr close "$PR_NUMBER" --repo "$REPO"
+
+            exit 0
+          fi
+
+          ####################################################################
+          # CASE 2: Newer tag exists → PR will be rewritten
+          ####################################################################
+          NEW_PR_TITLE="Bump ${SUBMODULE_PATH} from ${SUBMODULE_TAG:-unknown} to ${LATEST_TAG}"
+
+          gh pr edit "$PR_NUMBER" \
+            --repo "$REPO" \
+            --title "$NEW_PR_TITLE"
+
+          echo "Updating .gitmodules to latest tag: $LATEST_TAG"
+
+          git config -f .gitmodules \
+            "submodule.${SUBMODULE_PATH}.tag" \
+            "$LATEST_TAG"
+
+          git add .gitmodules
+
+          ####################################################################
+          # CASE 2A: Dependabot already at tag commit → no rewrite needed
+          ####################################################################
+          if [ "$CURRENT_SUBMODULE_COMMIT" = "$LATEST_TAG_COMMIT" ]; then
+
+            echo "Dependabot already at tag commit. Only .gitmodules updated."
+
+          ####################################################################
+          # CASE 2B: Need to rewrite submodule to tag commit
+          ####################################################################
+          else
+
+            echo "Rewriting submodule to tag commit..."
+
+            gh pr comment "$PR_NUMBER" \
+              --repo "$REPO" \
+              --body "$(cat <<EOF
+            Workflow "$GITHUB_WORKFLOW" rewrote this submodule update to use the latest release tag.
+
+            - Previous tag: \`${SUBMODULE_TAG}\`
+            - New tag: \`${LATEST_TAG}\`
+            - Dependabot commit: \`${CURRENT_SUBMODULE_COMMIT}\`
+            - Tag commit: \`${LATEST_TAG_COMMIT}\`
+            EOF
+            )"
+
+            git submodule update --init --recursive "$SUBMODULE_PATH"
             pushd "$SUBMODULE_PATH" > /dev/null
 
-            git fetch --tags --force
             git checkout "$LATEST_TAG"
 
             popd > /dev/null
-            rm -rf "$TEMP_DIR"
 
             git add "$SUBMODULE_PATH"
+          fi
 
-            SHOULD_FORCE_PUSH=true
-            SHOULD_COMMIT=true
+          ####################################################################
+          # Commit result (always single commit if changes exist)
+          ####################################################################
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
 
-            ##################################################################
-            # Commit changes if needed.
-            ##################################################################
-            if [ "$SHOULD_COMMIT" = true ]; then
+          git commit -m "$NEW_PR_TITLE"
 
-                git add .gitmodules
-
-                git commit -m "Align submodules with latest release tags" || \
-                echo "No changes to commit"
-
-            else
-                echo "No repository changes required."
-                exit 0
-            fi
-
-            ##################################################################
-            # Push changes back into the Dependabot PR branch.
-            #
-            # Force push only if we rewrote the submodule gitlink commit.
-            ##################################################################
-            if [ "$SHOULD_FORCE_PUSH" = true ]; then
-
-                echo "Force-pushing rewritten Dependabot branch"
-
-                git push origin \
-                HEAD:"$PR_BRANCH" \
-                --force
-
-            else
-
-                echo "Pushing normal commit to Dependabot branch"
-
-                git push origin \
-                HEAD:"$PR_BRANCH"
-
-            fi
-
-      ######################################################################
-      # Final status output
-      ######################################################################
-      - name: Done
-        run: |
-          echo "Submodule tag enforcement completed."
+          ####################################################################
+          # Push result back to Dependabot PR branch
+          ####################################################################
+          git push origin HEAD:"$PR_BRANCH"
