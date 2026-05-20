@@ -202,5 +202,5 @@
 	path = sample-repository
 	url = https://github.com/ctam/sample-repository
 	branch = main
-	tag = v1.0
+	tag = v1.1
 
