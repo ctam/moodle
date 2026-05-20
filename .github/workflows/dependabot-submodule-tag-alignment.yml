@@ -106,21 +106,20 @@ jobs:
           SUBMODULE_COUNT=$(echo "$CHANGED_SUBMODULES" | wc -w)
 
           if [ "$SUBMODULE_COUNT" -gt 1 ]; then
-
             echo "ERROR: Multiple submodules detected."
 
             gh pr comment "$PR_NUMBER" \
               --repo "$REPO" \
-              --body "$(cat <<EOF
-            Workflow "$GITHUB_WORKFLOW" expected exactly one submodule update in this Dependabot PR, but found multiple:
+              --body "$(printf '%s\n' \
+                "Workflow \"$GITHUB_WORKFLOW\" expected exactly one submodule update in this Dependabot PR, but found multiple:" \
+                "" \
+                '```' \
+                "$CHANGED_SUBMODULES" \
+                '```' \
+                "" \
+                "This PR was left unchanged for manual review."
+              )"
 
-            \`\`\`
-            $CHANGED_SUBMODULES
-            \`\`\`
-
-            This PR was left unchanged for manual review.
-            EOF
-            )"
             exit 1
           fi
 
@@ -189,14 +188,13 @@ jobs:
 
             gh pr comment "$PR_NUMBER" \
               --repo "$REPO" \
-              --body "$(cat <<EOF
-            Workflow "$GITHUB_WORKFLOW" closed this PR because the submodule is already pinned to the latest release tag:
-
-            - Tag: \`$LATEST_TAG\`
-
-            @dependabot ignore this
-            EOF
-            )"
+              --body "$(printf '%s\n' \
+                "Workflow \"$GITHUB_WORKFLOW\" closed this PR because the submodule is already pinned to the latest release tag:" \
+                "" \
+                "- Tag: \`$LATEST_TAG\`" \
+                "" \
+                "@dependabot ignore this"
+              )"
 
             gh pr close "$PR_NUMBER" --repo "$REPO"
 
@@ -236,15 +234,14 @@ jobs:
 
             gh pr comment "$PR_NUMBER" \
               --repo "$REPO" \
-              --body "$(cat <<EOF
-            Workflow "$GITHUB_WORKFLOW" rewrote this submodule update to use the latest release tag.
-
-            - Previous tag: \`${SUBMODULE_TAG}\`
-            - New tag: \`${LATEST_TAG}\`
-            - Dependabot commit: \`${CURRENT_SUBMODULE_COMMIT}\`
-            - Tag commit: \`${LATEST_TAG_COMMIT}\`
-            EOF
-            )"
+              --body "$(printf '%s\n' \
+                "Workflow \"$GITHUB_WORKFLOW\" rewrote this submodule update to use the latest release tag." \
+                "" \
+                "- Previous tag: \`${SUBMODULE_TAG}\`" \
+                "- New tag: \`${LATEST_TAG}\`" \
+                "- Dependabot commit: \`${CURRENT_SUBMODULE_COMMIT}\`" \
+                "- Tag commit: \`${LATEST_TAG_COMMIT}\`"
+              )"
 
             git submodule update --init --recursive "$SUBMODULE_PATH"
             pushd "$SUBMODULE_PATH" > /dev/null
