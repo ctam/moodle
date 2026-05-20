@@ -84,8 +84,13 @@ jobs:
           ####################################################################
           # Detect submodule changes in this PR
           ####################################################################
-          CHANGED_SUBMODULES=$(git diff --submodule=short "$BASE_SHA" "$HEAD_SHA" \
-            | grep '^Submodule ' | awk '{print $2}')
+          CHANGED_SUBMODULES=$(
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" \
+              | while read -r path; do
+                  git ls-tree "$HEAD_SHA" "$path" \
+                  | awk '$1 == "160000" {print $4}'
+              done
+          )
 
           if [ -z "$CHANGED_SUBMODULES" ]; then
             echo "No changed submodules detected."
