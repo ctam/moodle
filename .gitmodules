@@ -198,3 +198,9 @@
 	url = https://github.com/ucsf-education/moodle-theme-ucsf
 	branch = MOODLE_501_STABLE
 	tag = v5.1.2
+[submodule "sample-repository"]
+	path = sample-repository
+	url = https://github.com/ctam/sample-repository
+	branch = main
+	tag = v1.1
+
