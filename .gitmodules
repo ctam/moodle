@@ -122,7 +122,7 @@
 	path = public/mod/diary
 	url = https://github.com/drachels/moodle-mod_diary
 	branch = master
-	tag = v5.1.0
+	tag = v5.1.2
 [submodule "public/mod/chat"]
 	path = public/mod/chat
 	url = https://github.com/ucsf-education/moodle-mod_chat
